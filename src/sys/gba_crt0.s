@@ -8,7 +8,6 @@
     .section    .gba_crt0, "ax"
     .global     entrypoint
     .cpu        arm7tdmi
-
     .arm
 
 entrypoint:
@@ -63,11 +62,16 @@ entrypoint:
     .align  4
 
 start_vector:
-
     // Disable interrupts
     mov     r0, #0x4000000
     mov     r1, #0
     str     r1, [r0, #0x208] // IME
+
+    // set cartridge wait state for faster access
+    .set REG_WAITCNT, 0x04000204
+    ldr     r0, =REG_WAITCNT
+    ldr     r1, =0x4317
+    strh    r1, [r0]
 
     // Setup IRQ mode stack
     mov     r0, #0x12
@@ -165,6 +169,6 @@ mem_copy:
 blx_r2_trampoline:
     bx      r2
 
-    .align
+    .align 4
     .pool
     .end

@@ -1,7 +1,7 @@
 auntflora
 =========
 
-## NOTE: WORK IN PROGRESS
+### NOTE: WORK IN PROGRESS
 
 Port of [_Aunt Flora's Mansion_](https://w.itch.io/aunt-floras-mansion) to Gameboy Advance.
 

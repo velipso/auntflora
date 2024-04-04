@@ -141,11 +141,13 @@ SECTIONS
 
     .bss (NOLOAD) : ALIGN(4)
     {
+        __bss_start__ = .;
         *(.bss)
         *(.bss*)
         *(.gnu.linkonce.b.*) /* Used for vague linking */
         *(COMMON) /* In case -fcommon is used in gcc (not used by default) */
         . = ALIGN(4);
+        __bss_end__ = .;
     } > IWRAM
 
     __IWRAM_BSS_START__ = ADDR(.bss);

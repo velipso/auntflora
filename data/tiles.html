@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+<body>
+<canvas id="cnv" width="80" height="15"></canvas>
+<script>
+// extracted from source
+const palette = {
+  black: "#000000",
+  white: "#ffffff",
+  grey: "#9d9d9d",
+  darkgrey: "#697175",
+  lightgrey: "#cccccc",
+  gray: "#9d9d9d",
+  darkgray: "#697175",
+  lightgray: "#cccccc",
+  red: "#be2633",
+  darkred: "#732930",
+  lightred: "#e06f8b",
+  brown: "#a46422",
+  darkbrown: "#493c2b",
+  lightbrown: "#eeb62f",
+  orange: "#eb8931",
+  yellow: "#f7e26b",
+  green: "#44891a",
+  darkgreen: "#2f484e",
+  lightgreen: "#a3ce27",
+  blue: "#1d57f7",
+  lightblue: "#b2dcef",
+  darkblue: "#1b2632",
+  purple: "#342a97",
+  pink: "#de65e2"
+};
+const data = `background
+#9a00c2 #5200c2
+11011
+10101
+01110
+10101
+11011
+
+grass
+green lightgreen
+00000
+01000
+00010
+00000
+10000
+
+fence
+green grey lightgrey white
+00200
+00300
+12321
+00200
+00100
+
+gargoyle
+green brown lightgreen white
+00200
+02320
+23222
+02220
+00100
+
+cornerwall
+#ffb591 #ff5501 #a83700
+00001
+01212
+02022
+01212
+12222
+
+horiwall
+#ffb591 #ff5501 #a83700
+00000
+10122
+21012
+22101
+22222
+
+vertwall
+#ffb591 #ff5501 #a83700
+01222
+00122
+01012
+02102
+02212
+
+start
+pink
+..0..
+.000.
+00000
+.000.
+..0..
+
+player
+brown pink white
+.111.
+.0011
+.0011
+.222.
+02220
+
+flora
+brown pink white lightblue
+.333.
+.000.
+.202.
+.0003
+03133
+
+cat
+black brown yellow pink
+.....
+0.0..
+202..
+00000
+.0000
+
+everyslider
+#bcf818 #58d858 #006800 black
+00201
+01312
+23333
+01312
+12322
+
+horislider
+#38c0fc #0088fc #0000fc black
+00001
+01112
+23333
+01112
+12222
+
+vertslider
+#fcff00 #fcb800 #503000 black
+00201
+01312
+01312
+01312
+12322
+
+block
+#fca048 #fc3800 #ac1000
+00001
+01112
+01212
+01112
+12222
+
+righteleport
+white #fc78fc #94008c black
+03001
+03312
+01332
+03312
+13222
+
+downteleport
+white #fc78fc #94008c black
+00001
+33133
+03332
+01312
+12222
+
+lefteleport
+white #fc78fc #94008c black
+00131
+01332
+03312
+01332
+12232
+
+upteleport
+white #fc78fc #94008c black
+00001
+01312
+03332
+33133
+12222
+
+rightpusher
+white #00e8e4 #0088fc black
+03001
+03312
+03332
+03312
+13222
+
+downpusher
+white #00e8e4 #0088fc black
+00001
+33333
+03332
+01312
+12222
+
+leftpusher
+white #00e8e4 #0088fc black
+00131
+01332
+03332
+01332
+12232
+
+uppusher
+white #00e8e4 #0088fc black
+00001
+01312
+03332
+33333
+12222
+
+selector
+white
+00.00
+0...0
+.....
+0...0
+00.00
+
+fakeselector
+white
+00.00
+0...0
+.....
+0...0
+00.00
+
+xselector
+white
+00.00
+0...0
+..0..
+0...0
+00.00
+
+selectorgrass
+white green
+00100
+01110
+11111
+01110
+00100
+
+horislidergrass
+#38c0fc #0088fc #0000fc green
+00001
+01112
+23333
+01112
+12222
+
+vertslidergrass
+#fcff00 #fcb800 #503000 green
+00201
+01312
+01312
+01312
+12322
+
+everyslidergrass
+#bcf818 #58d858 #006800 green
+00201
+01312
+23333
+01312
+12322
+
+downpushergrass
+white #00e8e4 #0088fc green
+00001
+33333
+03332
+01312
+12222
+
+water
+blue lightblue
+00000
+00000
+00000
+00000
+00000
+
+wateredge
+blue lightblue
+11111
+01110
+00000
+00000
+00000
+
+fountain
+blue lightblue lightgrey white
+01010
+10101
+13131
+30103
+13331
+
+fencewater
+blue grey lightgrey white lightblue
+40204
+00300
+12321
+00200
+00100
+
+savepoint
+red yellow white
+.1.1.
+10101
+10001
+.101.
+..1..
+
+savepointgrass
+red yellow white green
+31313
+10101
+10001
+31013
+33133`.split('\n\n');
+
+const cnv = document.getElementById('cnv');
+const ctx = cnv.getContext('2d');
+const id = ctx.getImageData(0, 0, cnv.width, cnv.height);
+
+for (let ti = 0; ti < data.length; ti++) {
+  const tile = data[ti];
+  const rows = tile.split('\n');
+  const name = rows.shift();
+  const cols = rows.shift().split(' ').map(n => n.startsWith('#') ? n : palette[n]);
+  const x = (ti % 16) * 5;
+  const y = Math.floor(ti / 16) * 5;
+  for (let py = 0; py < 5; py++) {
+    for (let px = 0; px < 5; px++) {
+      const ch = rows[py].charAt(px);
+      const k = ((x + px) + (y + py) * cnv.width) * 4;
+      if (ch === '.') {
+        id.data[k + 0] = 0;
+        id.data[k + 1] = 0;
+        id.data[k + 2] = 0;
+        id.data[k + 3] = 0;
+      } else {
+        const col = cols[parseInt(ch, 10)].substr(1);
+        id.data[k + 0] = parseInt(col.substr(0, 2), 16);
+        id.data[k + 1] = parseInt(col.substr(2, 2), 16);
+        id.data[k + 2] = parseInt(col.substr(4, 2), 16);
+        id.data[k + 3] = 255;
+      }
+    }
+  }
+}
+
+ctx.putImageData(id, 0, 0);
+</script>
+</body>
+</html>

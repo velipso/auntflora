@@ -28,6 +28,15 @@ extern void gvmain();
 #define SYS_SCREEN_MODE_2F     6  // 2 full-color, arbitrary scaling
 #define SYS_SCREEN_MODE_2I     7  // 2 indexed (256 color)
 
+#define SYS_BGT_SIZE_256X256    0
+#define SYS_BGT_SIZE_512X256    1
+#define SYS_BGT_SIZE_256X512    2
+#define SYS_BGT_SIZE_512X512    3
+#define SYS_BGS_SIZE_128X128    0
+#define SYS_BGS_SIZE_256X256    1
+#define SYS_BGS_SIZE_512X512    2
+#define SYS_BGS_SIZE_1024X1024  3
+
 void sys_init();
 void sys_set_sprite_enable(i32 enable);
 void sys_set_screen_enable(i32 enable);
@@ -35,16 +44,74 @@ void sys_set_screen_mode(i32 mode);
 void sys_set_vblank(void (*irq_vblank_handler)());
 void sys_nextframe();
 
-static inline u16 RGB15(u16 r, u16 g, u16 b) {
-  return (r & 0x1F) | ((g & 0x1F) << 5) | ((b & 0x1F) << 10);
-}
+#define RGB15(r, g, b)  (((r) & 0x1f) | (((g) & 0x1f) << 5) | (((b) & 0x1f) << 10))
 
 #if defined(SYS_GBA)
+
+extern void memcpy32(void *dest, const void *src, u32 bytecount);
+extern void memcpy16(void *dest, const void *src, u32 bytecount);
+extern void memcpy8(void *dest, const void *src, u32 bytecount);
+extern void memset32(void *dest, u32 data, u32 bytecount);
+extern void memset16(void *dest, u32 data, u32 bytecount);
+extern void memset8(void *dest, u32 data, u32 bytecount);
 
 #define SECTION_EWRAM      __attribute__((section(".ewram")))
 #define SECTION_IWRAM_ARM  __attribute__((section(".iwram"), target("arm")))
 
 #define sys_pset_1f(x, y, c)  ((uint16_t *)0x06000000)[(x) + (y) * 240] = (c)
+
+static inline void sys_set_bg_config(
+  i32 bgn,       // 0-3
+  i32 priority,  // 0 (front) - 3 (back)
+  i32 tilestart, // 0-3
+  i32 mosaic,    // 0 (disable) - 1 (enable)
+  i32 color256,  // 0 (disable) - 1 (enable)
+  i32 mapstart,  // 0-31
+  i32 wrap,      // 0 (disable) - 1 (enable)
+  i32 size       // SYS_BGT_SIZE_* or SYS_BGS_SIZE_*
+) {
+  volatile u16 *cnt = ((volatile u16 *)0x04000008) + (bgn << 2);
+  *cnt =
+    ((priority  &  3) <<  0) |
+    ((tilestart &  3) <<  2) |
+    ((mosaic    &  1) <<  6) |
+    ((color256  &  1) <<  7) |
+    ((mapstart  & 31) <<  8) |
+    ((wrap      &  1) << 13) |
+    ((size      &  3) << 14);
+}
+
+static inline void sys_copy_tiles(
+  u32 tilestart, // matching sys_set_bg_config
+  const void *src,
+  u32 size       // bytes
+) {
+  memcpy32(((void *)0x06000000) + tilestart * 0x4000, src, size);
+}
+
+static inline void sys_copy_map(
+  u32 mapstart, // matching sys_set_bg_config
+  const void *src,
+  u32 size      // bytes
+) {
+  memcpy32(((void *)0x06000000) + mapstart * 0x800, src, size);
+}
+
+static inline void sys_copy_bgpal(
+  u32 start, // entry to start at, 0-254
+  const void *src,
+  u32 size   // bytes
+) {
+  memcpy32(((void *)0x05000000) + start * 2, src, size);
+}
+
+static inline void sys_copy_spritepal(
+  u32 start, // entry to start at, 0-254
+  const void *src,
+  u32 size   // bytes
+) {
+  memcpy32(((void *)0x05000200) + start * 2, src, size);
+}
 
 #endif // SYS_GBA
 
@@ -53,6 +120,43 @@ static inline u16 RGB15(u16 r, u16 g, u16 b) {
 #define SECTION_EWRAM
 #define SECTION_IWRAM_ARM
 
+void memcpy32(u8 *dest, const u8 *src, u32 bytecount);
+void memcpy16(u8 *dest, const u8 *src, u32 bytecount);
+void memcpy8(u8 *dest, const u8 *src, u32 bytecount);
+void memset32(u8 *dest, u32 data, u32 bytecount);
+void memset16(u8 *dest, u32 data, u32 bytecount);
+void memset8(u8 *dest, u32 data, u32 bytecount);
+
 void sys_pset_1f(i32 x, i32 y, u16 color);
+void sys_set_bg_config(
+  i32 bgn,       // 0-3
+  i32 priority,  // 0 (front) - 3 (back)
+  i32 tilestart, // 0-3
+  i32 mosaic,    // 0 (disable) - 1 (enable)
+  i32 color256,  // 0 (disable) - 1 (enable)
+  i32 mapstart,  // 0-31
+  i32 wrap,      // 0 (disable) - 1 (enable)
+  i32 size       // SYS_BGT_SIZE_* or SYS_BGS_SIZE_*
+);
+void sys_copy_tiles(
+  u32 tilestart, // matching sys_set_bg_config
+  const void *src,
+  u32 size       // bytes
+);
+void sys_copy_map(
+  u32 mapstart,  // matching sys_set_bg_config
+  const void *src,
+  u32 size       // bytes
+);
+void sys_copy_bgpal(
+  u32 start, // entry to start at, 0-254
+  const void *src,
+  u32 size   // bytes
+);
+void sys_copy_spritepal(
+  u32 start, // entry to start at, 0-254
+  const void *src,
+  u32 size   // bytes
+);
 
 #endif // SYS_SDL

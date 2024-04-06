@@ -59,6 +59,6 @@ sys__irq_init:
 
     bx    lr
 
-    .align
+    .align 4
     .pool
     .end

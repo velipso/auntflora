@@ -1,58 +1,58 @@
 //
-// auntflora - Port of Aunt Flora's Mansion to Gameboy Advance
+// auntflora - Port of Aunt Flora's Mansion to Game Boy Advance
 // by Sean Connelly (@velipso), https://sean.cm
 // Project Home: https://github.com/velipso/auntflora
 // SPDX-License-Identifier: 0BSD
 //
 
     .section    .iwram, "ax"
-    .global     irq_handler
-    .global     irq_vblank
-    .global     irq_hblank
-    .global     irq_vcount
-    .global     irq_timer0
-    .global     irq_timer1
-    .global     irq_timer2
-    .global     irq_timer3
-    .global     irq_serial
-    .global     irq_dma0
-    .global     irq_dma1
-    .global     irq_dma2
-    .global     irq_dma3
-    .global     irq_keypad
-    .global     irq_gamepak
+    .global     sys__irq_handler
+    .global     sys__irq_vblank
+    .global     sys__irq_hblank
+    .global     sys__irq_vcount
+    .global     sys__irq_timer0
+    .global     sys__irq_timer1
+    .global     sys__irq_timer2
+    .global     sys__irq_timer3
+    .global     sys__irq_serial
+    .global     sys__irq_dma0
+    .global     sys__irq_dma1
+    .global     sys__irq_dma2
+    .global     sys__irq_dma3
+    .global     sys__irq_keypad
+    .global     sys__irq_gamepak
     .cpu        arm7tdmi
     .arm
 
-irq_vblank:
+sys__irq_vblank:
     .space 4
-irq_hblank:
+sys__irq_hblank:
     .space 4
-irq_vcount:
+sys__irq_vcount:
     .space 4
-irq_timer0:
+sys__irq_timer0:
     .space 4
-irq_timer1:
+sys__irq_timer1:
     .space 4
-irq_timer2:
+sys__irq_timer2:
     .space 4
-irq_timer3:
+sys__irq_timer3:
     .space 4
-irq_serial:
+sys__irq_serial:
     .space 4
-irq_dma0:
+sys__irq_dma0:
     .space 4
-irq_dma1:
+sys__irq_dma1:
     .space 4
-irq_dma2:
+sys__irq_dma2:
     .space 4
-irq_dma3:
+sys__irq_dma3:
     .space 4
-irq_keypad:
+sys__irq_keypad:
     .space 4
-irq_gamepak:
+sys__irq_gamepak:
     .space 4
-irq_handler:
+sys__irq_handler:
     // offsets relative to 0x04000000
     .set IE    , 0x200
     .set IF    , 0x202
@@ -72,85 +72,85 @@ irq_handler:
     //
 
     // HBLANK
-    ldr   r3, =irq_hblank
+    ldr   r3, =sys__irq_hblank
     mov   r2, #1 << 1
     tst   r1, r2
     bne   interrupt_found
 
     // VCOUNT
-    add   r3, #irq_vcount - irq_hblank
+    add   r3, #sys__irq_vcount - sys__irq_hblank
     mov   r2, #1 << 2
     tst   r1, r2
     bne   interrupt_found
 
     // VBLANK
-    add   r3, #irq_vblank - irq_vcount
+    add   r3, #sys__irq_vblank - sys__irq_vcount
     mov   r2, #1 << 0
     tst   r1, r2
     bne   interrupt_found
 
     // TIMER0
-    add   r3, #irq_timer0 - irq_vblank
+    add   r3, #sys__irq_timer0 - sys__irq_vblank
     mov   r2, #1 << 3
     tst   r1, r2
     bne   interrupt_found
 
     // TIMER1
-    add   r3, #irq_timer1 - irq_timer0
+    add   r3, #sys__irq_timer1 - sys__irq_timer0
     mov   r2, #1 << 4
     tst   r1, r2
     bne   interrupt_found
 
     // TIMER2
-    add   r3, #irq_timer2 - irq_timer1
+    add   r3, #sys__irq_timer2 - sys__irq_timer1
     mov   r2, #1 << 5
     tst   r1, r2
     bne   interrupt_found
 
     // TIMER3
-    add   r3, #irq_timer3 - irq_timer2
+    add   r3, #sys__irq_timer3 - sys__irq_timer2
     mov   r2, #1 << 6
     tst   r1, r2
     bne   interrupt_found
 
     // SERIAL
-    add   r3, #irq_serial - irq_timer3
+    add   r3, #sys__irq_serial - sys__irq_timer3
     mov   r2, #1 << 7
     tst   r1, r2
     bne   interrupt_found
 
     // DMA0
-    add   r3, #irq_dma0 - irq_serial
+    add   r3, #sys__irq_dma0 - sys__irq_serial
     mov   r2, #1 << 8
     tst   r1, r2
     bne   interrupt_found
 
     // DMA1
-    add   r3, #irq_dma1 - irq_dma0
+    add   r3, #sys__irq_dma1 - sys__irq_dma0
     mov   r2, #1 << 9
     tst   r1, r2
     bne   interrupt_found
 
     // DMA2
-    add   r3, #irq_dma2 - irq_dma1
+    add   r3, #sys__irq_dma2 - sys__irq_dma1
     mov   r2, #1 << 10
     tst   r1, r2
     bne   interrupt_found
 
     // DMA3
-    add   r3, #irq_dma3 - irq_dma2
+    add   r3, #sys__irq_dma3 - sys__irq_dma2
     mov   r2, #1 << 11
     tst   r1, r2
     bne   interrupt_found
 
     // KEYPAD
-    add   r3, #irq_keypad - irq_dma3
+    add   r3, #sys__irq_keypad - sys__irq_dma3
     mov   r2, #1 << 12
     tst   r1, r2
     bne   interrupt_found
 
     // GAMEPAK
-    add   r3, #irq_gamepak - irq_keypad
+    add   r3, #sys__irq_gamepak - sys__irq_keypad
     mov   r2, #1 << 13
     tst   r1, r2
     bne   interrupt_found

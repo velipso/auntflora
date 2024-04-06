@@ -1,11 +1,11 @@
 //
-// auntflora - Port of Aunt Flora's Mansion to Gameboy Advance
+// auntflora - Port of Aunt Flora's Mansion to Game Boy Advance
 // by Sean Connelly (@velipso), https://sean.cm
 // Project Home: https://github.com/velipso/auntflora
 // SPDX-License-Identifier: 0BSD
 //
 
-    .section    .gba_crt0, "ax"
+    .section    .crt0, "ax"
     .global     entrypoint
     .cpu        arm7tdmi
     .arm
@@ -121,10 +121,8 @@ start_vector:
     ldr     r2, =__libc_init_array
     bl      blx_r2_trampoline
 
-    // Call main()
-    mov     r0, #0 // int argc
-    mov     r1, #0 // char *argv[]
-    ldr     r2, =main
+    // Call gvmain()
+    ldr     r2, =gvmain
     bl      blx_r2_trampoline
 
     // Global destructors

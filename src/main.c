@@ -1,35 +1,17 @@
 //
-// auntflora - Port of Aunt Flora's Mansion to Gameboy Advance
+// auntflora - Port of Aunt Flora's Mansion to Game Boy Advance
 // by Sean Connelly (@velipso), https://sean.cm
 // Project Home: https://github.com/velipso/auntflora
 // SPDX-License-Identifier: 0BSD
 //
 
+#define SYS_GBA
+#include "sys.h"
 #include <stdint.h>
 
-#define GBA_SCREEN_W            240
-#define GBA_SCREEN_H            160
-
-#define REG_DISPCNT             *((volatile uint16_t *)0x04000000)
-#define REG_DISPSTAT            *((volatile uint16_t *)0x04000004)
-#define REG_IE                  *((volatile uint16_t *)0x04000200)
-#define REG_IME                 *((volatile uint16_t *)0x04000208)
-
-#define DISPCNT_BG_MODE_MASK    (0x7)
-#define DISPCNT_BG_MODE(n)      ((n) & DISPCNT_BG_MODE_MASK) // 0 to 5
-
-#define DISPCNT_BG2_ENABLE      (1 << 10)
-
-#define MEM_VRAM_MODE3_FB       ((uint16_t *)0x06000000)
-
-static inline uint16_t RGB15(uint16_t r, uint16_t g, uint16_t b)
-{
-  return (r & 0x1F) | ((g & 0x1F) << 5) | ((b & 0x1F) << 10);
-}
-
-uint16_t pcolor = 0x7fff;
+uint16_t pcolor SECTION_EWRAM = 0x7fff;
 static inline void pset(int x, int y) {
-  MEM_VRAM_MODE3_FB[x + y * GBA_SCREEN_W] = pcolor;
+  sys_pset_1f(x, y, pcolor);
 }
 
 static void print_hex(int x, int y, int ch) {
@@ -180,42 +162,27 @@ static void print_clr(int x, int y) {
   print_hex(x + 7, y, 0xff);
 }
 
-extern void irq_handler();
-extern void irq_init();
-extern void (*irq_vblank)();
-
 uint32_t i = 0;
-void irq_vblank_handler() {
+static void SECTION_IWRAM_ARM irq_vblank() {
   i++;
 }
 
-inline void call_swi_5() {
-  __asm__("swi #5" ::: "r0", "r1", "r2", "r3", "r12", "lr", "memory", "cc");
-}
-
-int main(int argc, char *argv[]) {
-  irq_init();
-
-  REG_IME = 0;
-  // enable vblank
-  REG_DISPSTAT = 8;
-  REG_IE = 1;
-  irq_vblank = irq_vblank_handler;
-  REG_IME = 1;
-
-  REG_DISPCNT = DISPCNT_BG_MODE(3) | DISPCNT_BG2_ENABLE;
+void gvmain() {
+  sys_init();
+  sys_set_vblank(irq_vblank);
+  sys_set_screen_mode(SYS_SCREEN_MODE_1F);
+  sys_set_screen_enable(1);
 
   pcolor = RGB15(31, 31, 31);
-  print_num(0, 1, (uint32_t)irq_init);
+  print_num(0, 1, (uint32_t)&irq_vblank);
 
-  while(1) {
+  while (1) {
     pcolor = 0;
     print_clr(0, 0);
     pcolor = RGB15(31, 31, 31);
     print_num(0, 0, i);
-    for (int j = 0; j < 60; j++)
-      call_swi_5();
+    for (int j = 0; j < 60; j++) {
+      sys_nextframe();
+    }
   }
-
-  return 0;
 }

@@ -48,9 +48,9 @@ SECTIONS
 
     /* Header and crt0 */
 
-    .gba_crt0 : ALIGN(4)
+    .crt0 : ALIGN(4)
     {
-        KEEP (*(.gba_crt0))
+        KEEP (*(.crt0))
     } > ROM
 
     /* Code */

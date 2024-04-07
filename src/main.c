@@ -167,14 +167,18 @@ static void SECTION_IWRAM_ARM irq_vblank_test() {
   test_i++;
 }
 
-void print_test() {
+BINFILE(palette_bin);
+BINFILE(font_hd_bin);
+BINFILE(tiles_hd_bin);
+
+void gvmain_test() {
   sys_init();
   sys_set_vblank(irq_vblank_test);
   sys_set_screen_mode(SYS_SCREEN_MODE_1F);
   sys_set_screen_enable(1);
 
   pcolor = RGB15(31, 31, 31);
-  print_num(0, 1, (u32)&irq_vblank_test);
+  print_num(0, 1, BINSIZE(palette_bin));
 
   while (1) {
     pcolor = 0;
@@ -187,15 +191,39 @@ void print_test() {
   }
 }
 
-const u16 palette[] = {
-  RGB15(0, 0, 0),
-  RGB15(0, 0, 0),
-  RGB15(31, 31, 31),
-  //RGB15(31, 0, 0)
-};
+static u8 map0[64 * 64] = {0};
+static u8 map1[64 * 64] = {0};
+
+static void settile0(u32 x, u32 y, u32 t) {
+  u32 k = (x * 2) + (y * 64 * 2);
+  u32 tx = t & 0xf;
+  u32 ty = t >> 4;
+  u32 tk = (tx * 2) + (ty * 16 * 2);
+  map0[k + 0] = tk;
+  map0[k + 1] = tk + 1;
+  map0[k + 64] = tk + 32;
+  map0[k + 65] = tk + 33;
+}
+
+static void settile1(u32 x, u32 y, u32 t) {
+  u32 k = (x * 2) + (y * 64 * 2);
+  u32 tx = t & 0xf;
+  u32 ty = t >> 4;
+  u32 tk = (tx * 2) + (ty * 16 * 2);
+  map1[k + 0] = tk;
+  map1[k + 1] = tk + 1;
+  map1[k + 64] = tk + 32;
+  map1[k + 65] = tk + 33;
+}
+
+static void SECTION_IWRAM_ARM irq_vblank_6x6() {
+  sys_copy_map(28, 0, map0, 64 * 64);
+  sys_copy_map(30, 0, map1, 64 * 64);
+}
 
 void gvmain() {
   sys_init();
+  sys_set_vblank(irq_vblank_6x6);
   sys_set_screen_mode(SYS_SCREEN_MODE_2S6X6);
   sys_set_bg_config(
     2, // background #
@@ -203,7 +231,7 @@ void gvmain() {
     0, // tile start
     0, // mosaic
     1, // 256 colors
-    16, // map start
+    28, // map start
     0, // wrap
     SYS_BGS_SIZE_512X512
   );
@@ -213,14 +241,26 @@ void gvmain() {
     0, // tile start
     0, // mosaic
     1, // 256 colors
-    18, // map start
+    30, // map start
     0, // wrap
     SYS_BGS_SIZE_512X512
   );
-  sys_copy_bgpal(0, palette, sizeof(palette));
-  sys_copy_spritepal(0, palette, sizeof(palette));
+  sys_copy_bgpal(0, BINADDR(palette_bin), BINSIZE(palette_bin));
+  sys_copy_spritepal(0, BINADDR(palette_bin), BINSIZE(palette_bin));
+  sys_copy_tiles(0, BINADDR(tiles_hd_bin), BINSIZE(tiles_hd_bin));
+  sys_copy_tiles(1, BINADDR(font_hd_bin), BINSIZE(font_hd_bin));
+
+  for (int y = 0; y < 32; y++) {
+    for (int x = 0; x < 32; x++) {
+      settile0(x, y, 4);
+    }
+  }
+  settile0(10, 7, 0);
+  sys_set_bgs2_scroll(0x0156 * 6, 0x0156 * 10);
+  sys_nextframe();
   sys_set_screen_enable(1);
 
   while (1) {
+    sys_nextframe();
   }
 }

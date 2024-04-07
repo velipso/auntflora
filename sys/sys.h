@@ -17,6 +17,13 @@ typedef int8_t   i8;
 typedef int16_t  i16;
 typedef int32_t  i32;
 
+// access binary files generated via Makefile's objbinary
+#define BINFILE(n) \
+  extern const u8 _binary_ ## n ## _start[]; \
+  extern const u8 _binary_ ## n ## _size[]
+#define BINADDR(n)  ((void *)&_binary_ ## n ## _start)
+#define BINSIZE(n)  ((u32)&_binary_ ## n ## _size)
+
 extern void gvmain();
 
 #define SYS_SCREEN_MODE_4T     0  // 4 text
@@ -58,7 +65,7 @@ extern void memset8(void *dest, u32 data, u32 bytecount);
 #define SECTION_EWRAM      __attribute__((section(".ewram")))
 #define SECTION_IWRAM_ARM  __attribute__((section(".iwram"), target("arm")))
 
-#define sys_pset_1f(x, y, c)  ((uint16_t *)0x06000000)[(x) + (y) * 240] = (c)
+#define sys_pset_1f(x, y, c)  ((u16 *)0x06000000)[(x) + (y) * 240] = (c)
 
 static inline void sys_set_bg_config(
   i32 bgn,       // 0-3
@@ -70,7 +77,7 @@ static inline void sys_set_bg_config(
   i32 wrap,      // 0 (disable) - 1 (enable)
   i32 size       // SYS_BGT_SIZE_* or SYS_BGS_SIZE_*
 ) {
-  volatile u16 *cnt = ((volatile u16 *)0x04000008) + (bgn << 2);
+  volatile u16 *cnt = ((volatile u16 *)0x04000008) + bgn;
   *cnt =
     ((priority  &  3) <<  0) |
     ((tilestart &  3) <<  2) |
@@ -91,10 +98,11 @@ static inline void sys_copy_tiles(
 
 static inline void sys_copy_map(
   u32 mapstart, // matching sys_set_bg_config
+  u32 offset,
   const void *src,
   u32 size      // bytes
 ) {
-  memcpy32(((void *)0x06000000) + mapstart * 0x800, src, size);
+  memcpy32(((void *)0x06000000) + mapstart * 0x800 + offset, src, size);
 }
 
 static inline void sys_copy_bgpal(
@@ -111,6 +119,16 @@ static inline void sys_copy_spritepal(
   u32 size   // bytes
 ) {
   memcpy32(((void *)0x05000200) + start * 2, src, size);
+}
+
+static inline void sys_set_bgs2_scroll(i32 x, i32 y) {
+  *((volatile i32 *)0x04000028) = x;
+  *((volatile i32 *)0x0400002c) = y;
+}
+
+static inline void sys_set_bgs3_scroll(i32 x, i32 y) {
+  *((volatile i32 *)0x04000038) = x;
+  *((volatile i32 *)0x0400003c) = y;
 }
 
 #endif // SYS_GBA
@@ -145,6 +163,7 @@ void sys_copy_tiles(
 );
 void sys_copy_map(
   u32 mapstart,  // matching sys_set_bg_config
+  u32 offset,
   const void *src,
   u32 size       // bytes
 );
@@ -158,5 +177,7 @@ void sys_copy_spritepal(
   const void *src,
   u32 size   // bytes
 );
+void sys_set_bgs2_scroll(i32 x, i32 y);
+void sys_set_bgs3_scroll(i32 x, i32 y);
 
 #endif // SYS_SDL

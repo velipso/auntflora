@@ -84,6 +84,10 @@ static void _sys_set_screen_mode() {
       REG_BG2PB = 0;
       REG_BG2PC = 0;
       REG_BG2PD = 0x0156; // 8/6 * 0x100
+      REG_BG3PA = 0x0156; // 8/6 * 0x100
+      REG_BG3PB = 0;
+      REG_BG3PC = 0;
+      REG_BG3PD = 0x0156; // 8/6 * 0x100
       break;
     case SYS_SCREEN_MODE_2S5X5: // 2 scaling, targeting 5x5 tiles
       REG_DISPCNT =
@@ -98,6 +102,10 @@ static void _sys_set_screen_mode() {
       REG_BG2PB = 0;
       REG_BG2PC = 0;
       REG_BG2PD = 0x019a; // 8/5 * 0x100
+      REG_BG3PA = 0x019a; // 8/5 * 0x100
+      REG_BG3PB = 0;
+      REG_BG3PC = 0;
+      REG_BG3PD = 0x019a; // 8/5 * 0x100
       break;
     case SYS_SCREEN_MODE_1F: // 1 full-color, arbitrary scaling
       REG_DISPCNT =

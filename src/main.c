@@ -255,8 +255,9 @@ void gvmain() {
       settile0(x, y, 4);
     }
   }
-  settile0(10, 7, 0);
-  sys_set_bgs2_scroll(0x0156 * 6, 0x0156 * 10);
+  settile0(12, 7, 0);
+  settile0(12, 8, 0);
+  sys_set_bgs2_scroll(0x0156 * 30, 0x0156 * 16);
   sys_nextframe();
   sys_set_screen_enable(1);
 

@@ -170,6 +170,7 @@ static void SECTION_IWRAM_ARM irq_vblank_test() {
 BINFILE(palette_bin);
 BINFILE(font_hd_bin);
 BINFILE(tiles_hd_bin);
+BINFILE(world_bin);
 
 void gvmain_test() {
   sys_init();

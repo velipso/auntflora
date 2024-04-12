@@ -63,7 +63,8 @@ OBJS := \
 	$(patsubst %.c,$(TGT)/%.c.o,$(SOURCES_C)) \
 	$(TGT)/data/palette.o \
 	$(TGT)/data/font_hd.o \
-	$(TGT)/data/tiles_hd.o
+	$(TGT)/data/tiles_hd.o \
+	$(TGT)/data/world.o
 
 DEPS := $(OBJS:.o=.d)
 
@@ -104,6 +105,11 @@ $(TGT)/data/tiles_hd.o: $(DATA)/tiles_hd.png $(TGT)/data/palette.bin $(XFORM)
 	$(MKDIR) -p $(@D)
 	$(XFORM) expand6x6to8x8 $(DATA)/tiles_hd.png $(TGT)/data/palette.bin $(TGT)/data/tiles_hd.bin
 	cd $(TGT)/data && $(call objbinary,tiles_hd.bin,tiles_hd.o)
+
+$(TGT)/data/world.o: $(DATA)/world.json $(XFORM)
+	$(MKDIR) -p $(@D)
+	$(XFORM) world $(DATA)/world.json $(TGT)/data/world.bin
+	cd $(TGT)/data && $(call objbinary,world.bin,world.o)
 
 $(XFORM):
 	cd xform && make

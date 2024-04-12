@@ -12,6 +12,7 @@
 #include <stdbool.h>
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+#include "json.h"
 
 typedef uint8_t  u8;
 typedef uint16_t u16;
@@ -34,6 +35,9 @@ static void print_usage() {
     "\n"
     "  expand6x6to8x8 <input.png> <palette.bin> <output.bin>\n"
     "    Outputs 8x8 tiles from 6x6 source image\n"
+    "\n"
+    "  world <input.json> <output.bin>\n"
+    "    Process Tiled world data\n"
   );
 }
 
@@ -224,6 +228,83 @@ static int addpalette(const char *input, u16 *palette, int *nextpal, int maxpal)
   return 0;
 }
 
+static int *json_tiled_layer(json_value *tiled, const char *layer_name, int *data_count) {
+  json_value *layers = json_objectkey(tiled, "layers");
+  if (layers->kind != JSON_ARRAY) {
+    fprintf(stderr, "\nExpecting \"layers\" to be an array\n");
+    exit(1);
+  }
+  for (int i = 0; i < layers->u.array.count; i++) {
+    json_value *layer = layers->u.array.values[i];
+    if (strcmp(json_string(json_objectkey(layer, "name")), layer_name) == 0) {
+      json_value *data = json_objectkey(layer, "data");
+      if (data->kind != JSON_ARRAY) {
+        fprintf(stderr, "\nExpecting \"data\" to be an array\n");
+        exit(1);
+      }
+      int *result = malloc(sizeof(int) * data->u.array.count);
+      if (data_count)
+        *data_count = data->u.array.count;
+      for (int j = 0; j < data->u.array.count; j++) {
+        result[j] = json_number(data->u.array.values[j]);
+      }
+      return result;
+    }
+  }
+  fprintf(stderr, "\nMissing layer \"%s\"\n", layer_name);
+  exit(1);
+}
+
+static int process_world(json_value *jv, FILE *fp) {
+  int width = json_number(json_objectkey(jv, "width"));
+  int height = json_number(json_objectkey(jv, "height"));
+  int *base = json_tiled_layer(jv, "base", NULL);
+  int *objs = json_tiled_layer(jv, "objs", NULL);
+  int w = width / 2;
+  int h = height / 2;
+  int size = w * h + 2;
+  int warnings = 0;
+  uint16_t *data_res = malloc(sizeof(uint16_t) * size);
+  data_res[0] = w;
+  data_res[1] = h;
+  uint16_t *data = &data_res[2];
+  for (int y = 0; y < h; y++) {
+    for (int x = 0; x < w; x++) {
+      int b1 = base[(x * 2 + 0) + (y * 2 + 0) * width];
+      int b2 = base[(x * 2 + 1) + (y * 2 + 0) * width];
+      int b3 = base[(x * 2 + 0) + (y * 2 + 1) * width];
+      int b4 = base[(x * 2 + 1) + (y * 2 + 1) * width];
+      if (b2 != b1 + 1 || b3 != b1 + 32 || b4 != b1 + 33) {
+        warnings++;
+        fprintf(stderr, "WARNING: Bad base tile data at (%d, %d)\n", x * 2, y * 2);
+      }
+      int o1 = objs[(x * 2 + 0) + (y * 2 + 0) * width];
+      int o2 = objs[(x * 2 + 1) + (y * 2 + 0) * width];
+      int o3 = objs[(x * 2 + 0) + (y * 2 + 1) * width];
+      int o4 = objs[(x * 2 + 1) + (y * 2 + 1) * width];
+      if (o1 != 0 && (o2 != o1 + 1 || o3 != o1 + 32 || o4 != o1 + 33)) {
+        warnings++;
+        fprintf(stderr, "WARNING: Bad objs tile data at (%d, %d)\n", x * 2, y * 2);
+      }
+
+      int bx = ((b1 - 1) % 32) / 2;
+      int by = ((b1 - 1) / 32) / 2;
+      int ox = o1 == 0 ? 0 : ((o1 - 1) % 32) / 2;
+      int oy = o1 == 0 ? 0 : ((o1 - 1) / 32) / 2;
+      int b = bx + by * 16;
+      int o = ox + oy * 16;
+      data[x + y * w] = (o << 8) | b;
+    }
+  }
+  fwrite(data_res, sizeof(uint16_t), size, fp);
+  free(objs);
+  free(base);
+  if (warnings > 0) {
+    fprintf(stderr, "\n#\n# WARNINGS: %d\n#\n", warnings);
+  }
+  return 0;
+}
+
 int main(int argc, const char **argv) {
   if (argc < 2) {
     print_usage();
@@ -267,6 +348,18 @@ int main(int argc, const char **argv) {
       return 1;
     }
     return expand6x6to8x8(argv[2], argv[3], argv[4]);
+  } else if (strcmp(argv[1], "world") == 0) {
+    if (argc != 4) {
+      print_usage();
+      fprintf(stderr, "\nExpecting world <input.json> <output.bin>\n");
+      return 1;
+    }
+    json_value *jv = json_parsefile(argv[2]);
+    FILE *out = fopen(argv[3], "wb");
+    int res = process_world(jv, out);
+    fclose(out);
+    json_free(jv);
+    return res;
   } else {
     print_usage();
     fprintf(stderr, "\nUnknown command: %s\n", argv[1]);

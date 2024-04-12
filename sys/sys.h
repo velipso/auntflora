@@ -44,6 +44,17 @@ extern void gvmain();
 #define SYS_BGS_SIZE_512X512    2
 #define SYS_BGS_SIZE_1024X1024  3
 
+#define SYS_INPUT_A   (1 << 0)
+#define SYS_INPUT_B   (1 << 1)
+#define SYS_INPUT_SE  (1 << 2)
+#define SYS_INPUT_ST  (1 << 3)
+#define SYS_INPUT_R   (1 << 4)
+#define SYS_INPUT_L   (1 << 5)
+#define SYS_INPUT_U   (1 << 6)
+#define SYS_INPUT_D   (1 << 7)
+#define SYS_INPUT_ZR  (1 << 8)
+#define SYS_INPUT_ZL  (1 << 9)
+
 void sys_init();
 void sys_set_sprite_enable(i32 enable);
 void sys_set_screen_enable(i32 enable);
@@ -90,10 +101,11 @@ static inline void sys_set_bg_config(
 
 static inline void sys_copy_tiles(
   u32 tilestart, // matching sys_set_bg_config
+  u32 offset,
   const void *src,
   u32 size       // bytes
 ) {
-  memcpy32(((void *)0x06000000) + tilestart * 0x4000, src, size);
+  memcpy32(((void *)0x06000000) + tilestart * 0x4000 + offset, src, size);
 }
 
 static inline void sys_copy_map(
@@ -131,6 +143,10 @@ static inline void sys_set_bgs3_scroll(i32 x, i32 y) {
   *((volatile i32 *)0x0400003c) = y;
 }
 
+static inline u16 sys_input() {
+  return *((volatile u16 *)0x4000130);
+}
+
 #endif // SYS_GBA
 
 #if defined(SYS_SDL)
@@ -158,6 +174,7 @@ void sys_set_bg_config(
 );
 void sys_copy_tiles(
   u32 tilestart, // matching sys_set_bg_config
+  u32 offset,
   const void *src,
   u32 size       // bytes
 );
@@ -179,5 +196,6 @@ void sys_copy_spritepal(
 );
 void sys_set_bgs2_scroll(i32 x, i32 y);
 void sys_set_bgs3_scroll(i32 x, i32 y);
+u16 sys_input();
 
 #endif // SYS_SDL

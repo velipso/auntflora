@@ -8,6 +8,7 @@
 #define SYS_GBA
 #include "sys.h"
 #include <stdint.h>
+#include <stdlib.h>
 
 u16 pcolor SECTION_EWRAM = RGB15(31, 31, 31);
 static inline void pset(u32 x, u32 y) {
@@ -197,29 +198,76 @@ static u8 map1[64 * 64] = {0};
 
 static void settile0(u32 x, u32 y, u32 t) {
   u32 k = (x * 2) + (y * 64 * 2);
-  u32 tx = t & 0xf;
-  u32 ty = t >> 4;
-  u32 tk = (tx * 2) + (ty * 16 * 2);
-  map0[k + 0] = tk;
-  map0[k + 1] = tk + 1;
-  map0[k + 64] = tk + 32;
-  map0[k + 65] = tk + 33;
+  if (t == 0) {
+    map0[k + 0] = 0;
+    map0[k + 1] = 0;
+    map0[k + 64] = 0;
+    map0[k + 65] = 0;
+  } else {
+    u32 tx = t & 0xf;
+    u32 ty = t >> 4;
+    u32 tk = (tx * 2) + (ty * 32 * 2);
+    map0[k + 0] = tk;
+    map0[k + 1] = tk + 1;
+    map0[k + 64] = tk + 32;
+    map0[k + 65] = tk + 33;
+  }
 }
 
 static void settile1(u32 x, u32 y, u32 t) {
   u32 k = (x * 2) + (y * 64 * 2);
   u32 tx = t & 0xf;
   u32 ty = t >> 4;
-  u32 tk = (tx * 2) + (ty * 16 * 2);
+  u32 tk = (tx * 2) + (ty * 32 * 2);
   map1[k + 0] = tk;
   map1[k + 1] = tk + 1;
   map1[k + 64] = tk + 32;
   map1[k + 65] = tk + 33;
 }
 
+static u16 g_inputdown = 0;
+static u16 g_inputhit = 0;
 static void SECTION_IWRAM_ARM irq_vblank_6x6() {
   sys_copy_map(28, 0, map0, 64 * 64);
   sys_copy_map(30, 0, map1, 64 * 64);
+  int inp = ~sys_input();
+  g_inputhit = ~g_inputdown & inp;
+  g_inputdown = inp;
+}
+
+static struct {
+  u16 *data;
+  u32 width;
+  u32 height;
+} g_world = {0};
+static int g_maskworld = 0;
+static void copy_world(int wx, int wy) {
+  wx *= 17;
+  wy *= 12;
+  for (int y = 0; y < 16; y++) {
+    int sy = wy + y;
+    for (int x = 0; x < 25; x++) {
+      int sx = wx + x;
+      int ww = 0;
+      if (sx >= 0 && sx < g_world.width && sy >= 0 && sy < g_world.height) {
+        ww = g_world.data[sx + sy * g_world.width];
+      }
+      if (g_maskworld && (x < 4 || x >= 21 || y < 2 || y >= 14))
+        ww = 0;
+      settile0(x, y, ww >> 8);
+      settile1(x, y, ww & 0xff);
+    }
+  }
+}
+
+static void load_world() {
+  free(g_world.data);
+  const u16 *world = BINADDR(world_bin);
+  g_world.width = world[0];
+  g_world.height = world[1];
+  int size = g_world.width * g_world.height * 2;
+  g_world.data = malloc(size);
+  memcpy32(g_world.data, &world[2], size);
 }
 
 void gvmain() {
@@ -248,21 +296,27 @@ void gvmain() {
   );
   sys_copy_bgpal(0, BINADDR(palette_bin), BINSIZE(palette_bin));
   sys_copy_spritepal(0, BINADDR(palette_bin), BINSIZE(palette_bin));
-  sys_copy_tiles(0, BINADDR(tiles_hd_bin), BINSIZE(tiles_hd_bin));
-  sys_copy_tiles(1, BINADDR(font_hd_bin), BINSIZE(font_hd_bin));
+  sys_copy_tiles(0, 0, BINADDR(tiles_hd_bin), BINSIZE(tiles_hd_bin));
+  sys_copy_tiles(1, 0, BINADDR(font_hd_bin), BINSIZE(font_hd_bin));
 
-  for (int y = 0; y < 32; y++) {
-    for (int x = 0; x < 32; x++) {
-      settile0(x, y, 4);
-    }
-  }
-  settile0(12, 7, 0);
-  settile0(12, 8, 0);
+  // ensure that tile 0 is fully transparent
+  const u8 zero[64] = {0};
+  sys_copy_tiles(0, 0, zero, sizeof(zero));
+
   sys_set_bgs2_scroll(0x0156 * 30, 0x0156 * 16);
+  sys_set_bgs3_scroll(0x0156 * 30, 0x0156 * 16);
   sys_nextframe();
   sys_set_screen_enable(1);
 
+  load_world();
+  int wx = 0, wy = 0;
   while (1) {
     sys_nextframe();
+    if (g_inputhit & SYS_INPUT_U) wy--;
+    if (g_inputhit & SYS_INPUT_R) wx++;
+    if (g_inputhit & SYS_INPUT_D) wy++;
+    if (g_inputhit & SYS_INPUT_L) wx--;
+    if (g_inputhit & SYS_INPUT_SE) g_maskworld = 1 - g_maskworld;
+    copy_world(wx, wy);
   }
 }

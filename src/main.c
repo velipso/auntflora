@@ -171,7 +171,10 @@ static void SECTION_IWRAM_ARM irq_vblank_test() {
 BINFILE(palette_bin);
 BINFILE(font_hd_bin);
 BINFILE(tiles_hd_bin);
-BINFILE(world_bin);
+BINFILE(sprites_hd_bin);
+BINFILE(worldbg_bin);
+BINFILE(worldlogic_bin);
+BINFILE(markers_bin);
 
 void gvmain_test() {
   sys_init();
@@ -240,10 +243,20 @@ static struct {
   u32 width;
   u32 height;
 } g_world = {0};
+static struct {
+  u32 x;
+  u32 y;
+} g_markers[3] = {0};
 static int g_maskworld = 0;
-static void copy_world(int wx, int wy) {
-  wx *= 17;
-  wy *= 12;
+static void copy_world() {
+  int wx = 0;
+  int wy = 0;
+  { // find player
+    int x = g_markers[0].x - 21;
+    int y = g_markers[0].y - 14;
+    while (x >= wx) wx += 17;
+    while (y >= wy) wy += 12;
+  }
   for (int y = 0; y < 16; y++) {
     int sy = wy + y;
     for (int x = 0; x < 25; x++) {
@@ -254,20 +267,52 @@ static void copy_world(int wx, int wy) {
       }
       if (g_maskworld && (x < 4 || x >= 21 || y < 2 || y >= 14))
         ww = 0;
-      settile0(x, y, ww >> 8);
-      settile1(x, y, ww & 0xff);
+      settile0(x, y, ww & 0xff);
+    }
+  }
+
+  const u8 *bg = BINADDR(worldbg_bin);
+  for (int y = 1; y < 30; y++) {
+    memcpy8(&map1[y * 64], &bg[wx * 2 + (wy * 2 + y) * g_world.width * 2], 45);
+  }
+  if (g_maskworld) {
+    // clear border
+    for (int y = 1; y < 4; y++) {
+      memset8(&map1[y * 64], 0, 45);
+    }
+    for (int y = 4; y < 28; y++) {
+      for (int i = 0; i < 8; i++) {
+        map1[y * 64 + i] = 0;
+        map1[y * 64 + 42 + i] = 0;
+      }
+    }
+    for (int y = 28; y < 30; y++) {
+      memset8(&map1[y * 64], 0, 45);
     }
   }
 }
 
 static void load_world() {
   free(g_world.data);
-  const u16 *world = BINADDR(world_bin);
+  const u16 *world = BINADDR(worldlogic_bin);
   g_world.width = world[0];
   g_world.height = world[1];
   int size = g_world.width * g_world.height * 2;
   g_world.data = malloc(size);
   memcpy32(g_world.data, &world[2], size);
+
+  // load markers
+  const u16 *markers = BINADDR(markers_bin);
+  int i = 0;
+  while (1) {
+    int x = markers[i * 2];
+    int y = markers[i * 2 + 1];
+    if (x == 0xffff)
+      break;
+    g_markers[i].x = x;
+    g_markers[i].y = y;
+    i++;
+  }
 }
 
 void gvmain() {
@@ -297,26 +342,32 @@ void gvmain() {
   sys_copy_bgpal(0, BINADDR(palette_bin), BINSIZE(palette_bin));
   sys_copy_spritepal(0, BINADDR(palette_bin), BINSIZE(palette_bin));
   sys_copy_tiles(0, 0, BINADDR(tiles_hd_bin), BINSIZE(tiles_hd_bin));
+  sys_copy_tiles(4, 0, BINADDR(sprites_hd_bin), BINSIZE(sprites_hd_bin));
   sys_copy_tiles(1, 0, BINADDR(font_hd_bin), BINSIZE(font_hd_bin));
 
   // ensure that tile 0 is fully transparent
   const u8 zero[64] = {0};
   sys_copy_tiles(0, 0, zero, sizeof(zero));
 
-  sys_set_bgs2_scroll(0x0156 * 30, 0x0156 * 16);
-  sys_set_bgs3_scroll(0x0156 * 30, 0x0156 * 16);
+  sys_set_bgs2_scroll(0x0156 * 30 - 12, 0x0156 * 16);
+  sys_set_bgs3_scroll(0x0156 * 30 - 12, 0x0156 * 16);
   sys_nextframe();
   sys_set_screen_enable(1);
 
   load_world();
-  int wx = 0, wy = 0;
   while (1) {
     sys_nextframe();
-    if (g_inputhit & SYS_INPUT_U) wy--;
-    if (g_inputhit & SYS_INPUT_R) wx++;
-    if (g_inputhit & SYS_INPUT_D) wy++;
-    if (g_inputhit & SYS_INPUT_L) wx--;
+    int dx = 0, dy = 0;
+    if (g_inputhit & SYS_INPUT_U) dy--;
+    if (g_inputhit & SYS_INPUT_R) dx++;
+    if (g_inputhit & SYS_INPUT_D) dy++;
+    if (g_inputhit & SYS_INPUT_L) dx--;
+    if (dx != 0 || dy != 0) {
+      g_markers[0].x += dx;
+      g_markers[0].y += dy;
+      // TODO: move sprite
+    }
     if (g_inputhit & SYS_INPUT_SE) g_maskworld = 1 - g_maskworld;
-    copy_world(wx, wy);
+    copy_world();
   }
 }

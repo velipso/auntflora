@@ -64,7 +64,10 @@ OBJS := \
 	$(TGT)/data/palette.o \
 	$(TGT)/data/font_hd.o \
 	$(TGT)/data/tiles_hd.o \
-	$(TGT)/data/world.o
+	$(TGT)/data/sprites_hd.o \
+	$(TGT)/data/worldbg.o \
+	$(TGT)/data/worldlogic.o \
+	$(TGT)/data/markers.o
 
 DEPS := $(OBJS:.o=.d)
 
@@ -89,9 +92,10 @@ $(TGT)/%.c.o : %.c
 
 all: $(ROM)
 
-$(TGT)/data/palette.bin: $(DATA)/font_hd.png $(DATA)/tiles_hd.png $(XFORM)
+$(TGT)/data/palette.bin: $(DATA)/font_hd.png $(DATA)/tiles_hd.png $(DATA)/sprites_hd.png $(XFORM)
 	$(MKDIR) -p $(@D)
-	$(XFORM) palette256 $(TGT)/data/palette.bin $(DATA)/font_hd.png $(DATA)/tiles_hd.png
+	$(XFORM) palette256 $(TGT)/data/palette.bin \
+		$(DATA)/font_hd.png $(DATA)/tiles_hd.png $(DATA)/sprites_hd.png
 
 $(TGT)/data/palette.o: $(TGT)/data/palette.bin
 	cd $(TGT)/data && $(call objbinary,palette.bin,palette.o)
@@ -106,10 +110,18 @@ $(TGT)/data/tiles_hd.o: $(DATA)/tiles_hd.png $(TGT)/data/palette.bin $(XFORM)
 	$(XFORM) expand6x6to8x8 $(DATA)/tiles_hd.png $(TGT)/data/palette.bin $(TGT)/data/tiles_hd.bin
 	cd $(TGT)/data && $(call objbinary,tiles_hd.bin,tiles_hd.o)
 
-$(TGT)/data/world.o: $(DATA)/world.json $(XFORM)
+$(TGT)/data/sprites_hd.o: $(DATA)/sprites_hd.png $(TGT)/data/palette.bin $(XFORM)
 	$(MKDIR) -p $(@D)
-	$(XFORM) world $(DATA)/world.json $(TGT)/data/world.bin
-	cd $(TGT)/data && $(call objbinary,world.bin,world.o)
+	$(XFORM) copy8x8 $(DATA)/sprites_hd.png $(TGT)/data/palette.bin $(TGT)/data/sprites_hd.bin
+	cd $(TGT)/data && $(call objbinary,sprites_hd.bin,sprites_hd.o)
+
+$(TGT)/data/worldbg.o $(TGT)/data/worldlogic.o $(TGT)/data/markers.o: $(DATA)/world.json $(XFORM)
+	$(MKDIR) -p $(@D)
+	$(XFORM) world $(DATA)/world.json \
+		$(TGT)/data/worldbg.bin $(TGT)/data/worldlogic.bin $(TGT)/data/markers.bin
+	cd $(TGT)/data && $(call objbinary,worldbg.bin,worldbg.o)
+	cd $(TGT)/data && $(call objbinary,worldlogic.bin,worldlogic.o)
+	cd $(TGT)/data && $(call objbinary,markers.bin,markers.o)
 
 $(XFORM):
 	cd xform && make

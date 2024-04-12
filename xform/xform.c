@@ -36,7 +36,10 @@ static void print_usage() {
     "  expand6x6to8x8 <input.png> <palette.bin> <output.bin>\n"
     "    Outputs 8x8 tiles from 6x6 source image\n"
     "\n"
-    "  world <input.json> <output.bin>\n"
+    "  copy8x8 <input.png> <palette.bin> <output.bin>\n"
+    "    Outputs 8x8 tiles from 8x8 source image\n"
+    "\n"
+    "  world <input.json> <bg.bin> <logic.bin> <sprite.bin>\n"
     "    Process Tiled world data\n"
   );
 }
@@ -193,6 +196,55 @@ static int expand6x6to8x8(const char *input, const char *palette, const char *ou
   return 0;
 }
 
+static int copy8x8(const char *input, const char *palette, const char *output) {
+  int maxpal;
+  u16 *pal = readpal(palette, &maxpal);
+  FILE *fp = fopen(input, "rb");
+  if (fp == NULL) {
+    fprintf(stderr, "\nFailed to read: %s\n", input);
+    return 1;
+  }
+  int width, height;
+  u32 *data = (u32 *)stbi_load_from_file(fp, &width, &height, NULL, 4);
+  fclose(fp);
+
+  fp = fopen(output, "wb");
+  if (fp == NULL) {
+    fprintf(stderr, "\nFailed to write: %s\n", output);
+    return 1;
+  }
+
+  int tcx = width / 8;
+  int tcy = height / 8;
+  for (int ty = 0; ty < tcy; ty++) {
+    for (int tx = 0; tx < tcx; tx++) {
+      u8 src[64] = {0};
+
+      // load 8x8 tile into src
+      for (int py = 0; py < 8; py++) {
+        int y = ty * 8 + py;
+        for (int px = 0; px < 8; px++) {
+          int x = tx * 8 + px;
+          int k = x + y * width;
+          int c = findpal(data[k], pal, maxpal);
+          if (c < 0) {
+            fprintf(stderr, "\nCannot find color at (%d, %d) in %s\n", x, y, input);
+          }
+          src[px + py * 8] = c;
+        }
+      }
+
+      // write results
+      fwrite(src, sizeof(src), 1, fp);
+    }
+  }
+
+  fclose(fp);
+  stbi_image_free(data);
+  free(pal);
+  return 0;
+}
+
 static int addpalette(const char *input, u16 *palette, int *nextpal, int maxpal) {
   FILE *fp = fopen(input, "rb");
   int width, height;
@@ -255,29 +307,58 @@ static int *json_tiled_layer(json_value *tiled, const char *layer_name, int *dat
   exit(1);
 }
 
-static int process_world(json_value *jv, FILE *fp) {
+static int process_world(json_value *jv, FILE *fpbg, FILE *fplogic, FILE *fpsprite) {
+  // marks whether a background tile is solid or not
+  const int is_solid[] = {
+    // 0 = not solid
+    // 1 = solid
+    // 2 = shouldn't be on base layer
+    0, 1, 1, 0, 1, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1,
+    0, 1, 0, 0, 0, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1,
+    0, 1, 2, 2, 1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 1, 1,
+    0, 2, 2, 2, 1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 1, 1,
+  };
   int width = json_number(json_objectkey(jv, "width"));
   int height = json_number(json_objectkey(jv, "height"));
   int *base = json_tiled_layer(jv, "base", NULL);
   int *objs = json_tiled_layer(jv, "objs", NULL);
+  int *markers = json_tiled_layer(jv, "markers", NULL);
   int w = width / 2;
   int h = height / 2;
-  int size = w * h + 2;
   int warnings = 0;
-  uint16_t *data_res = malloc(sizeof(uint16_t) * size);
-  data_res[0] = w;
-  data_res[1] = h;
-  uint16_t *data = &data_res[2];
+
+  int bg_size = width * height;
+  uint8_t *bg = malloc(sizeof(uint8_t) * bg_size);
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      int b = base[x + y * width];
+      if (b <= 0) {
+        warnings++;
+        fprintf(stderr, "WARNING: base tile is transparent at (%d, %d)\n", x, y);
+      } else {
+        b--;
+      }
+      int bx = (b % 32) / 2;
+      int by = (b / 32) / 2;
+      if (is_solid[bx + by * 16] == 2) {
+        warnings++;
+        fprintf(stderr,
+          "WARNING: base tile is using graphics reserved for objects at (%d, %d)\n",
+          x, y
+        );
+      }
+      bg[x + y * width] = b;
+    }
+  }
+  fwrite(bg, sizeof(uint8_t), bg_size, fpbg);
+
+  int logic_size = w * h + 2;
+  uint16_t *logic_res = malloc(sizeof(uint16_t) * logic_size);
+  logic_res[0] = w;
+  logic_res[1] = h;
+  uint16_t *logic = &logic_res[2];
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
-      int b1 = base[(x * 2 + 0) + (y * 2 + 0) * width];
-      int b2 = base[(x * 2 + 1) + (y * 2 + 0) * width];
-      int b3 = base[(x * 2 + 0) + (y * 2 + 1) * width];
-      int b4 = base[(x * 2 + 1) + (y * 2 + 1) * width];
-      if (b2 != b1 + 1 || b3 != b1 + 32 || b4 != b1 + 33) {
-        warnings++;
-        fprintf(stderr, "WARNING: Bad base tile data at (%d, %d)\n", x * 2, y * 2);
-      }
       int o1 = objs[(x * 2 + 0) + (y * 2 + 0) * width];
       int o2 = objs[(x * 2 + 1) + (y * 2 + 0) * width];
       int o3 = objs[(x * 2 + 0) + (y * 2 + 1) * width];
@@ -286,17 +367,60 @@ static int process_world(json_value *jv, FILE *fp) {
         warnings++;
         fprintf(stderr, "WARNING: Bad objs tile data at (%d, %d)\n", x * 2, y * 2);
       }
-
-      int bx = ((b1 - 1) % 32) / 2;
-      int by = ((b1 - 1) / 32) / 2;
+      int b = base[(x * 2 + 0) + (y * 2 + 0) * width];
+      int bx = ((b - 1) % 32) / 2;
+      int by = ((b - 1) / 32) / 2;
+      b = bx + by * 16;
       int ox = o1 == 0 ? 0 : ((o1 - 1) % 32) / 2;
       int oy = o1 == 0 ? 0 : ((o1 - 1) / 32) / 2;
-      int b = bx + by * 16;
       int o = ox + oy * 16;
-      data[x + y * w] = (o << 8) | b;
+      if (is_solid[b])
+        o |= 0x8000;
+      logic[x + y * w] = o;
     }
   }
-  fwrite(data_res, sizeof(uint16_t), size, fp);
+  fwrite(logic_res, sizeof(uint16_t), logic_size, fplogic);
+
+  uint16_t *sprite = NULL;
+  int sprite_count = 0;
+  for (int y = 0; y < h; y++) {
+    for (int x = 0; x < w; x++) {
+      int m1 = markers[(x * 2 + 0) + (y * 2 + 0) * width];
+      int m2 = markers[(x * 2 + 1) + (y * 2 + 0) * width];
+      int m3 = markers[(x * 2 + 0) + (y * 2 + 1) * width];
+      int m4 = markers[(x * 2 + 1) + (y * 2 + 1) * width];
+      if (m1 != 0 && (m2 != m1 + 1 || m3 != m1 + 32 || m4 != m1 + 33)) {
+        warnings++;
+        fprintf(stderr, "WARNING: Bad marker tile data at (%d, %d)\n", x * 2, y * 2);
+      }
+      if (m1 != 0) {
+        int mx = ((m1 - 257) % 32) / 2;
+        int my = ((m1 - 257) / 32) / 2;
+        int m = mx + my * 16;
+        if (sprite_count < (m + 1) * 2) {
+          sprite = realloc(sprite, sizeof(uint16_t) * (m + 1) * 2);
+          for (int i = sprite_count; i < (m + 1) * 2; i++)
+            sprite[i] = 0xfffe;
+          sprite_count = (m + 1) * 2;
+        }
+        sprite[m * 2 + 0] = x;
+        sprite[m * 2 + 1] = y;
+      }
+    }
+  }
+  for (int i = 0; i < sprite_count; i += 2) {
+    if (sprite[i] == 0xfffe) {
+      warnings++;
+      fprintf(stderr, "WARNING: Missing sprite %d location\n", i / 2);
+    }
+  }
+  sprite_count += 2;
+  sprite = realloc(sprite, sizeof(uint16_t) * sprite_count);
+  sprite[sprite_count - 2] = 0xffff;
+  sprite[sprite_count - 1] = 0xffff;
+  fwrite(sprite, sizeof(uint16_t), sprite_count, fpsprite);
+
+  free(markers);
   free(objs);
   free(base);
   if (warnings > 0) {
@@ -348,16 +472,27 @@ int main(int argc, const char **argv) {
       return 1;
     }
     return expand6x6to8x8(argv[2], argv[3], argv[4]);
-  } else if (strcmp(argv[1], "world") == 0) {
-    if (argc != 4) {
+  } else if (strcmp(argv[1], "copy8x8") == 0) {
+    if (argc != 5) {
       print_usage();
-      fprintf(stderr, "\nExpecting world <input.json> <output.bin>\n");
+      fprintf(stderr, "\nExpecting copy8x8 <input.png> <palette.bin> <output.bin>\n");
+      return 1;
+    }
+    return copy8x8(argv[2], argv[3], argv[4]);
+  } else if (strcmp(argv[1], "world") == 0) {
+    if (argc != 6) {
+      print_usage();
+      fprintf(stderr, "\nExpecting world <input.json> <bg.bin> <logic.bin> <sprite.bin>\n");
       return 1;
     }
     json_value *jv = json_parsefile(argv[2]);
-    FILE *out = fopen(argv[3], "wb");
-    int res = process_world(jv, out);
-    fclose(out);
+    FILE *bg = fopen(argv[3], "wb");
+    FILE *logic = fopen(argv[4], "wb");
+    FILE *sprite = fopen(argv[5], "wb");
+    int res = process_world(jv, bg, logic, sprite);
+    fclose(sprite);
+    fclose(logic);
+    fclose(bg);
     json_free(jv);
     return res;
   } else {

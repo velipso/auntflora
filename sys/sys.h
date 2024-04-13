@@ -147,6 +147,10 @@ static inline u16 sys_input() {
   return *((volatile u16 *)0x4000130);
 }
 
+static inline void sys_copy_oam(u16 *oam) {
+  memcpy32((void *)0x07000000, oam, 0x400);
+}
+
 #endif // SYS_GBA
 
 #if defined(SYS_SDL)
@@ -197,5 +201,6 @@ void sys_copy_spritepal(
 void sys_set_bgs2_scroll(i32 x, i32 y);
 void sys_set_bgs3_scroll(i32 x, i32 y);
 u16 sys_input();
+void sys_copy_oam(u16 *oam);
 
 #endif // SYS_SDL

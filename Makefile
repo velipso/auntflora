@@ -29,7 +29,7 @@ XFORM := $(TGT)/xform/xform
 SOURCES_S := $(wildcard $(SRC)/*.s $(SRC)/**/*.s $(SYS)/*.s $(SYS)/gba/*.s $(SYS)/gba/**/*.s)
 SOURCES_C := $(wildcard $(SRC)/*.c $(SRC)/**/*.c $(SYS)/*.c $(SYS)/gba/*.c $(SYS)/gba/**/*.c)
 
-DEFINES :=
+DEFINES := -DSYS_GBA
 DEFINES += -D__GBA__
 
 LIBS     := -lc

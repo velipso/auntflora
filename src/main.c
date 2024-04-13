@@ -5,10 +5,11 @@
 // SPDX-License-Identifier: 0BSD
 //
 
-#define SYS_GBA
 #include "sys.h"
 #include <stdint.h>
 #include <stdlib.h>
+#include "ani.h"
+#include "anidata.h"
 
 u16 pcolor SECTION_EWRAM = RGB15(31, 31, 31);
 static inline void pset(u32 x, u32 y) {
@@ -217,22 +218,12 @@ static void settile0(u32 x, u32 y, u32 t) {
   }
 }
 
-static void settile1(u32 x, u32 y, u32 t) {
-  u32 k = (x * 2) + (y * 64 * 2);
-  u32 tx = t & 0xf;
-  u32 ty = t >> 4;
-  u32 tk = (tx * 2) + (ty * 32 * 2);
-  map1[k + 0] = tk;
-  map1[k + 1] = tk + 1;
-  map1[k + 64] = tk + 32;
-  map1[k + 65] = tk + 33;
-}
-
 static u16 g_inputdown = 0;
 static u16 g_inputhit = 0;
 static void SECTION_IWRAM_ARM irq_vblank_6x6() {
   sys_copy_map(28, 0, map0, 64 * 64);
   sys_copy_map(30, 0, map1, 64 * 64);
+  sys_copy_oam(g_oam);
   int inp = ~sys_input();
   g_inputhit = ~g_inputdown & inp;
   g_inputdown = inp;
@@ -256,6 +247,8 @@ static void copy_world() {
     int y = g_markers[0].y - 14;
     while (x >= wx) wx += 17;
     while (y >= wy) wy += 12;
+    g_sprites[0].origin.x = (g_markers[0].x - wx) * 12 - 32;
+    g_sprites[0].origin.y = (g_markers[0].y - wy) * 12 - 18;
   }
   for (int y = 0; y < 16; y++) {
     int sy = wy + y;
@@ -355,19 +348,26 @@ void gvmain() {
   sys_set_screen_enable(1);
 
   load_world();
+
+  g_sprites[0].pc = ani_player_l;
+  g_sprites[0].origin.x = 0;
+  g_sprites[0].origin.y = 0;
+
   while (1) {
     sys_nextframe();
+
     int dx = 0, dy = 0;
-    if (g_inputhit & SYS_INPUT_U) dy--;
-    if (g_inputhit & SYS_INPUT_R) dx++;
-    if (g_inputhit & SYS_INPUT_D) dy++;
-    if (g_inputhit & SYS_INPUT_L) dx--;
+    if (g_inputhit & SYS_INPUT_U){ dy--; g_sprites[0].pc = ani_player_u; }
+    if (g_inputhit & SYS_INPUT_R){ dx++; g_sprites[0].pc = ani_player_r; }
+    if (g_inputhit & SYS_INPUT_D){ dy++; g_sprites[0].pc = ani_player_d; }
+    if (g_inputhit & SYS_INPUT_L){ dx--; g_sprites[0].pc = ani_player_l; }
     if (dx != 0 || dy != 0) {
       g_markers[0].x += dx;
       g_markers[0].y += dy;
-      // TODO: move sprite
     }
     if (g_inputhit & SYS_INPUT_SE) g_maskworld = 1 - g_maskworld;
     copy_world();
+    for (i32 i = 0; i < 128; i++)
+      ani_step(i);
   }
 }

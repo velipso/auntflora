@@ -7,7 +7,9 @@
 
 #include "sys.h"
 
-extern u16 ani_player_u[];
-extern u16 ani_player_r[];
-extern u16 ani_player_d[];
-extern u16 ani_player_l[];
+extern const u16 ani_player_u[];
+extern const u16 ani_player_r[];
+extern const u16 ani_player_d[];
+extern const u16 ani_player_l[];
+extern const u16 ani_aunt[];
+extern const u16 ani_cat[];

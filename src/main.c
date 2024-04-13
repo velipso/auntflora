@@ -238,18 +238,32 @@ static struct {
   u32 x;
   u32 y;
 } g_markers[3] = {0};
-static int g_maskworld = 0;
-static void copy_world() {
+
+struct find_player_level_st { int wx; int wy; };
+static struct find_player_level_st find_player_level() {
   int wx = 0;
   int wy = 0;
-  { // find player
-    int x = g_markers[0].x - 21;
-    int y = g_markers[0].y - 14;
-    while (x >= wx) wx += 17;
-    while (y >= wy) wy += 12;
-    g_sprites[0].origin.x = (g_markers[0].x - wx) * 12 - 32;
-    g_sprites[0].origin.y = (g_markers[0].y - wy) * 12 - 18;
-  }
+  int x = g_markers[0].x - 21;
+  int y = g_markers[0].y - 14;
+  while (x >= wx) wx += 17;
+  while (y >= wy) wy += 12;
+  return (struct find_player_level_st){
+    .wx = wx,
+    .wy = wy
+  };
+}
+
+static void snap_player(int wx, int wy) {
+  g_sprites[0].origin.x = (g_markers[0].x - wx) * 12 - 32;
+  g_sprites[0].origin.y = (g_markers[0].y - wy) * 12 - 18;
+  g_sprites[1].origin.x = (g_markers[1].x - wx) * 12 - 32;
+  g_sprites[1].origin.y = (g_markers[1].y - wy) * 12 - 18;
+  g_sprites[2].origin.x = (g_markers[2].x - wx) * 12 - 32;
+  g_sprites[2].origin.y = (g_markers[2].y - wy) * 12 - 18;
+}
+
+static int g_maskworld = 0;
+static void copy_world_offset(int wx, int wy) {
   for (int y = 0; y < 16; y++) {
     int sy = wy + y;
     for (int x = 0; x < 25; x++) {
@@ -308,6 +322,12 @@ static void load_world() {
   }
 }
 
+static void nextframe() {
+  for (i32 i = 0; i < 128; i++)
+    ani_step(i);
+  sys_nextframe();
+}
+
 void gvmain() {
   sys_init();
   sys_set_vblank(irq_vblank_6x6);
@@ -350,13 +370,16 @@ void gvmain() {
   load_world();
 
   g_sprites[0].pc = ani_player_l;
-  g_sprites[0].origin.x = 0;
-  g_sprites[0].origin.y = 0;
+  g_sprites[1].pc = ani_aunt;
+  g_sprites[2].pc = ani_cat;
 
+  struct find_player_level_st fp = find_player_level();
+  snap_player(fp.wx, fp.wy);
   while (1) {
-    sys_nextframe();
+    nextframe();
 
     int dx = 0, dy = 0;
+    if (g_inputhit & SYS_INPUT_SE) g_maskworld = 1 - g_maskworld;
     if (g_inputhit & SYS_INPUT_U){ dy--; g_sprites[0].pc = ani_player_u; }
     if (g_inputhit & SYS_INPUT_R){ dx++; g_sprites[0].pc = ani_player_r; }
     if (g_inputhit & SYS_INPUT_D){ dy++; g_sprites[0].pc = ani_player_d; }
@@ -364,10 +387,27 @@ void gvmain() {
     if (dx != 0 || dy != 0) {
       g_markers[0].x += dx;
       g_markers[0].y += dy;
+      struct find_player_level_st fp2 = find_player_level();
+      int fdx = fp2.wx > fp.wx ? 1 : fp2.wx < fp.wx ? -1 : 0;
+      int fdy = fp2.wy > fp.wy ? 1 : fp2.wy < fp.wy ? -1 : 0;
+      if (fdx != 0 || fdy != 0) {
+        if (g_maskworld) {
+          // snap to new location
+          fp = fp2;
+        } else {
+          // scroll to new location
+          while (fp2.wx != fp.wx || fp2.wy != fp.wy) {
+            fp.wx += fdx;
+            fp.wy += fdy;
+            copy_world_offset(fp.wx, fp.wy);
+            snap_player(fp.wx, fp.wy);
+            nextframe();
+          }
+        }
+      }
+      snap_player(fp.wx, fp.wy);
     }
-    if (g_inputhit & SYS_INPUT_SE) g_maskworld = 1 - g_maskworld;
-    copy_world();
-    for (i32 i = 0; i < 128; i++)
-      ani_step(i);
+
+    copy_world_offset(fp.wx, fp.wy);
   }
 }

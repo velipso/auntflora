@@ -81,30 +81,44 @@
 #define ADDDX(v)       (0xb000 | F4(v))
 #define ADDDY(v)       (0xc000 | F4(v))
 
-u16 ani_player_u[] = {
+const u16 ani_player_u[] = {
   RESET(),
   SIZE_16x16(),
   TILEXY(0, 16),
   STOP()
 };
 
-u16 ani_player_r[] = {
+const u16 ani_player_r[] = {
   RESET(),
   SIZE_16x16(),
   TILEXY(0, 32),
   STOP()
 };
 
-u16 ani_player_d[] = {
+const u16 ani_player_d[] = {
   RESET(),
   SIZE_16x16(),
   TILEXY(0, 48),
   STOP()
 };
 
-u16 ani_player_l[] = {
+const u16 ani_player_l[] = {
   RESET(),
   SIZE_16x16(),
   TILEXY(0, 64),
+  STOP()
+};
+
+const u16 ani_aunt[] = {
+  RESET(),
+  SIZE_16x16(),
+  TILEXY(0, 80),
+  STOP()
+};
+
+const u16 ani_cat[] = {
+  RESET(),
+  SIZE_16x16(),
+  TILEXY(0, 96),
   STOP()
 };

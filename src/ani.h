@@ -8,7 +8,7 @@
 #include "sys.h"
 
 typedef struct {
-  u16 *pc;
+  const u16 *pc;
   u8 waitcount;
   u8 loopcount;
   i16 gravity; // Q8.8

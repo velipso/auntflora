@@ -5,7 +5,6 @@
 // SPDX-License-Identifier: 0BSD
 //
 
-#define SYS_GBA
 #include "sys.h"
 #include "gba.h"
 

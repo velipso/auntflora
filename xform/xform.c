@@ -403,6 +403,7 @@ static int process_world(json_value *jv, FILE *fpbg, FILE *fplogic, FILE *fpspri
             sprite[i] = 0xfffe;
           sprite_count = (m + 1) * 2;
         }
+        printf("marker %2d at (%2d, %2d)\n", m, x, y);
         sprite[m * 2 + 0] = x;
         sprite[m * 2 + 1] = y;
       }

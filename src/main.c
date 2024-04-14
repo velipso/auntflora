@@ -555,7 +555,7 @@ static void nextframe() {
 }
 
 static inline void delay_push() {
-  for (int i = 0; i < 20; i++)
+  for (int i = 0; i < 10; i++)
     nextframe();
 }
 
@@ -606,6 +606,12 @@ static void find_pushers(struct find_player_level_st *fp, int x, int y, int dir)
     u16 nc = world_at(x, y);
     blink_tile(fp, x, y);
     if (is_pusher(nc, dir2)) {
+      for (int i = 0; i < g_pushers_size; i++) {
+        if (g_pushers[i].x == x && g_pushers[i].y == y) {
+          // already found
+          return;
+        }
+      }
       g_pushers[g_pushers_size].x = x;
       g_pushers[g_pushers_size].y = y;
       g_pushers[g_pushers_size].dir = dir2;
@@ -634,7 +640,8 @@ static void apply_pushers(struct find_player_level_st *fp) {
 #endif
 
     int dirty = 0;
-    for (int i = 0; i < g_pushers_size; i++) {
+    int gs = g_pushers_size; // cache because we can add more as we go
+    for (int i = 0; i < gs; i++) {
       int nx = g_pushers[i].x;
       int ny = g_pushers[i].y;
       int dir = g_pushers[i].dir;
@@ -660,6 +667,13 @@ static void apply_pushers(struct find_player_level_st *fp) {
           }
           write_logic(nx, ny, 0);
           advance_pt(&g_pushers[i].x, &g_pushers[i].y, dir, 1);
+
+          // find pushers perpendicular to this one
+          int dir2 = (dir + 1) & 3;
+          advance_pt(&nx, &ny, dir2, 1);
+          find_pushers(fp, nx, ny, dir2);
+          advance_pt(&nx, &ny, dir2, -2);
+          find_pushers(fp, nx, ny, (dir2 + 2) & 3);
           break;
         } else if (is_pushable_by_block(nc, dir)) {
           // pusher could still push

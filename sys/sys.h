@@ -6,13 +6,17 @@
 //
 
 #pragma once
-
 #include <stdint.h>
 #include <stddef.h>
+#include "gba/gba.h"
 
+typedef uint8_t  byte;
 typedef uint8_t  u8;
+typedef uint16_t ushort;
 typedef uint16_t u16;
+typedef uint32_t uint;
 typedef uint32_t u32;
+typedef int8_t   sbyte;
 typedef int8_t   i8;
 typedef int16_t  i16;
 typedef int32_t  i32;
@@ -88,7 +92,7 @@ static inline void sys_set_bg_config(
   i32 wrap,      // 0 (disable) - 1 (enable)
   i32 size       // SYS_BGT_SIZE_* or SYS_BGS_SIZE_*
 ) {
-  volatile u16 *cnt = ((volatile u16 *)0x04000008) + bgn;
+  volatile u16 *cnt = &REG_BG0CNT + bgn;
   *cnt =
     ((priority  &  3) <<  0) |
     ((tilestart &  3) <<  2) |
@@ -134,17 +138,17 @@ static inline void sys_copy_spritepal(
 }
 
 static inline void sys_set_bgs2_scroll(i32 x, i32 y) {
-  *((volatile i32 *)0x04000028) = x;
-  *((volatile i32 *)0x0400002c) = y;
+  REG_BG2X = x;
+  REG_BG2Y = y;
 }
 
 static inline void sys_set_bgs3_scroll(i32 x, i32 y) {
-  *((volatile i32 *)0x04000038) = x;
-  *((volatile i32 *)0x0400003c) = y;
+  REG_BG3X = x;
+  REG_BG3Y = y;
 }
 
 static inline u16 sys_input() {
-  return *((volatile u16 *)0x4000130);
+  return REG_KEYINPUT;
 }
 
 static inline void sys_copy_oam(u16 *oam) {

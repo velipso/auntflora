@@ -8,9 +8,7 @@
 #pragma once
 #include "sys.h"
 
-extern const u16 ani_player_u[];
-extern const u16 ani_player_r[];
-extern const u16 ani_player_d[];
-extern const u16 ani_player_l[];
-extern const u16 ani_aunt[];
-extern const u16 ani_cat[];
+void snd_walk();
+void snd_push();
+void snd_forward();
+void snd_bump();

@@ -5,6 +5,7 @@
 // SPDX-License-Identifier: 0BSD
 //
 
+#pragma once
 #include "sys.h"
 
 typedef struct {

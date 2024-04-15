@@ -5,6 +5,7 @@
 // SPDX-License-Identifier: 0BSD
 //
 
+#pragma once
 #define REG_DISPCNT     *((volatile u16 *)0x04000000)
 #define REG_DISPSTAT    *((volatile u16 *)0x04000004)
 #define REG_VCOUNT      *((volatile u16 *)0x04000006)

@@ -17,6 +17,7 @@ RM      := rm -rf
 SYS     := sys
 SRC     := src
 DATA    := data
+WAV     := wav
 TGT     := tgt
 
 ELF  := $(TGT)/$(NAME).elf
@@ -28,6 +29,7 @@ XFORM := $(TGT)/xform/xform
 
 SOURCES_S := $(wildcard $(SRC)/*.s $(SRC)/**/*.s $(SYS)/*.s $(SYS)/gba/*.s $(SYS)/gba/**/*.s)
 SOURCES_C := $(wildcard $(SRC)/*.c $(SRC)/**/*.c $(SYS)/*.c $(SYS)/gba/*.c $(SYS)/gba/**/*.c)
+SOURCES_WAV := $(wildcard $(SRC)/*.wav)
 
 DEFINES := -DSYS_GBA
 DEFINES += -D__GBA__
@@ -67,7 +69,10 @@ OBJS := \
 	$(TGT)/data/sprites_hd.o \
 	$(TGT)/data/worldbg.o \
 	$(TGT)/data/worldlogic.o \
-	$(TGT)/data/markers.o
+	$(TGT)/data/markers.o \
+	$(TGT)/data/music_tables.o \
+	$(TGT)/data/music_wavs.o \
+	$(TGT)/data/music_offsets.o
 
 DEPS := $(OBJS:.o=.d)
 
@@ -115,13 +120,27 @@ $(TGT)/data/sprites_hd.o: $(DATA)/sprites_hd.png $(TGT)/data/palette.bin $(XFORM
 	$(XFORM) copy8x8 $(DATA)/sprites_hd.png $(TGT)/data/palette.bin $(TGT)/data/sprites_hd.bin
 	cd $(TGT)/data && $(call objbinary,sprites_hd.bin,sprites_hd.o)
 
-$(TGT)/data/worldbg.o $(TGT)/data/worldlogic.o $(TGT)/data/markers.o: $(DATA)/world.json $(XFORM)
+$(TGT)/data/worldbg.o \
+$(TGT)/data/worldlogic.o \
+$(TGT)/data/markers.o: $(DATA)/world.json $(XFORM)
 	$(MKDIR) -p $(@D)
 	$(XFORM) world $(DATA)/world.json \
 		$(TGT)/data/worldbg.bin $(TGT)/data/worldlogic.bin $(TGT)/data/markers.bin
 	cd $(TGT)/data && $(call objbinary,worldbg.bin,worldbg.o)
 	cd $(TGT)/data && $(call objbinary,worldlogic.bin,worldlogic.o)
 	cd $(TGT)/data && $(call objbinary,markers.bin,markers.o)
+
+$(TGT)/data/music_tables.o \
+$(TGT)/data/music_wavs.o \
+$(TGT)/data/music_offsets.o \
+$(TGT)/data/music_names.txt: $(SOURCES_WAV) $(XFORM)
+	$(MKDIR) -p $(@D)
+	$(XFORM) music tables $(TGT)/data/music_tables.bin
+	cd $(TGT)/data && $(call objbinary,music_tables.bin,music_tables.o)
+	$(XFORM) music wav $(WAV) \
+		$(TGT)/data/music_wavs.bin $(TGT)/data/music_offsets.bin $(TGT)/data/music_names.txt
+	cd $(TGT)/data && $(call objbinary,music_wavs.bin,music_wavs.o)
+	cd $(TGT)/data && $(call objbinary,music_offsets.bin,music_offsets.o)
 
 $(XFORM):
 	cd xform && make

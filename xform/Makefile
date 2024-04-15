@@ -13,7 +13,7 @@ MKDIR     := mkdir
 RM        := rm -rf
 CFLAGS    := -Wall -O3
 SOURCES_C := $(wildcard $(SRC)/*.c $(SRC)/**/*.c)
-LDFLAGS   :=
+LDFLAGS   := -lm
 OBJS      := $(patsubst $(SRC)/%.c,$(TGT)/%.c.o,$(SOURCES_C))
 DEPS      := $(OBJS:.o=.d)
 
@@ -30,3 +30,5 @@ $(TGT)/$(NAME): $(OBJS)
 
 clean:
 	$(RM) $(TGT)/$(NAME)
+
+-include $(DEPS)

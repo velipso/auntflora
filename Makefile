@@ -7,18 +7,20 @@
 
 NAME := auntflora
 
-PREFIX  := arm-none-eabi-
-CC      := $(PREFIX)gcc
-LD      := $(PREFIX)ld
-OBJDUMP := $(PREFIX)objdump
-OBJCOPY := $(PREFIX)objcopy
-MKDIR   := mkdir
-RM      := rm -rf
-SYS     := sys
-SRC     := src
-DATA    := data
-WAV     := wav
-TGT     := tgt
+PREFIX   := arm-none-eabi-
+CC       := $(PREFIX)gcc
+LD       := $(PREFIX)ld
+OBJDUMP  := $(PREFIX)objdump
+OBJCOPY  := $(PREFIX)objcopy
+MKDIR    := mkdir
+RM       := rm -rf
+SYS      := sys
+SRC      := src
+DATA     := data
+SND      := $(DATA)/snd
+TGT      := tgt
+TGT_DATA := $(TGT)/$(DATA)
+TGT_SND  := $(TGT)/$(SND)
 
 ELF  := $(TGT)/$(NAME).elf
 DUMP := $(TGT)/$(NAME).dump
@@ -29,7 +31,7 @@ XFORM := $(TGT)/xform/xform
 
 SOURCES_S := $(wildcard $(SRC)/*.s $(SRC)/**/*.s $(SYS)/*.s $(SYS)/gba/*.s $(SYS)/gba/**/*.s)
 SOURCES_C := $(wildcard $(SRC)/*.c $(SRC)/**/*.c $(SYS)/*.c $(SYS)/gba/*.c $(SYS)/gba/**/*.c)
-SOURCES_WAV := $(wildcard $(SRC)/*.wav)
+SOURCES_WAV := $(wildcard $(SND)/*.wav)
 
 DEFINES := -DSYS_GBA
 DEFINES += -D__GBA__
@@ -63,16 +65,21 @@ LDFLAGS := \
 OBJS := \
 	$(patsubst %.s,$(TGT)/%.s.o,$(SOURCES_S)) \
 	$(patsubst %.c,$(TGT)/%.c.o,$(SOURCES_C)) \
-	$(TGT)/data/palette.o \
-	$(TGT)/data/font_hd.o \
-	$(TGT)/data/tiles_hd.o \
-	$(TGT)/data/sprites_hd.o \
-	$(TGT)/data/worldbg.o \
-	$(TGT)/data/worldlogic.o \
-	$(TGT)/data/markers.o \
-	$(TGT)/data/music_tables.o \
-	$(TGT)/data/music_wavs.o \
-	$(TGT)/data/music_offsets.o
+	$(TGT_DATA)/palette.o \
+	$(TGT_DATA)/font_hd.o \
+	$(TGT_DATA)/tiles_hd.o \
+	$(TGT_DATA)/sprites_hd.o \
+	$(TGT_DATA)/worldbg.o \
+	$(TGT_DATA)/worldlogic.o \
+	$(TGT_DATA)/markers.o \
+	$(TGT_SND)/snd_osc.o \
+	$(TGT_SND)/snd_tempo.o \
+	$(TGT_SND)/snd_slice.o \
+	$(TGT_SND)/snd_dphase.o \
+	$(TGT_SND)/snd_bend.o \
+	$(TGT_SND)/snd_wavs.o \
+	$(TGT_SND)/snd_offsets.o \
+	$(TGT_SND)/snd_sizes.o
 
 DEPS := $(OBJS:.o=.d)
 
@@ -85,11 +92,11 @@ objbinary = $(OBJCOPY) -I binary -O elf32-littlearm -B arm \
 	--rename-section .data=.rodata,alloc,load,readonly,data,contents \
 	$1 $2
 
-$(TGT)/%.s.o : %.s
+$(TGT)/%.s.o: %.s
 	$(MKDIR) -p $(@D)
-	$(CC) $(ASFLAGS) -MMD -MP -c -o $@ $<
+	$(CC) $(ASFLAGS) -I$(dir $<) -MMD -MP -c -o $@ $<
 
-$(TGT)/%.c.o : %.c
+$(TGT)/%.c.o: %.c
 	$(MKDIR) -p $(@D)
 	$(CC) $(CFLAGS) -MMD -MP -c -o $@ $<
 
@@ -97,50 +104,70 @@ $(TGT)/%.c.o : %.c
 
 all: $(ROM)
 
-$(TGT)/data/palette.bin: $(DATA)/font_hd.png $(DATA)/tiles_hd.png $(DATA)/sprites_hd.png $(XFORM)
+$(TGT_DATA)/palette.bin: $(DATA)/font_hd.png $(DATA)/tiles_hd.png $(DATA)/sprites_hd.png $(XFORM)
 	$(MKDIR) -p $(@D)
-	$(XFORM) palette256 $(TGT)/data/palette.bin \
+	$(XFORM) palette256 $(TGT_DATA)/palette.bin \
 		$(DATA)/font_hd.png $(DATA)/tiles_hd.png $(DATA)/sprites_hd.png
 
-$(TGT)/data/palette.o: $(TGT)/data/palette.bin
-	cd $(TGT)/data && $(call objbinary,palette.bin,palette.o)
+$(TGT_DATA)/palette.o: $(TGT_DATA)/palette.bin
+	cd $(TGT_DATA) && $(call objbinary,palette.bin,palette.o)
 
-$(TGT)/data/font_hd.o: $(DATA)/font_hd.png $(TGT)/data/palette.bin $(XFORM)
+$(TGT_DATA)/font_hd.o: $(DATA)/font_hd.png $(TGT_DATA)/palette.bin $(XFORM)
 	$(MKDIR) -p $(@D)
-	$(XFORM) expand6x6to8x8 $(DATA)/font_hd.png $(TGT)/data/palette.bin $(TGT)/data/font_hd.bin
-	cd $(TGT)/data && $(call objbinary,font_hd.bin,font_hd.o)
+	$(XFORM) expand6x6to8x8 $(DATA)/font_hd.png $(TGT_DATA)/palette.bin $(TGT_DATA)/font_hd.bin
+	cd $(TGT_DATA) && $(call objbinary,font_hd.bin,font_hd.o)
 
-$(TGT)/data/tiles_hd.o: $(DATA)/tiles_hd.png $(TGT)/data/palette.bin $(XFORM)
+$(TGT_DATA)/tiles_hd.o: $(DATA)/tiles_hd.png $(TGT_DATA)/palette.bin $(XFORM)
 	$(MKDIR) -p $(@D)
-	$(XFORM) expand6x6to8x8 $(DATA)/tiles_hd.png $(TGT)/data/palette.bin $(TGT)/data/tiles_hd.bin
-	cd $(TGT)/data && $(call objbinary,tiles_hd.bin,tiles_hd.o)
+	$(XFORM) expand6x6to8x8 $(DATA)/tiles_hd.png $(TGT_DATA)/palette.bin $(TGT_DATA)/tiles_hd.bin
+	cd $(TGT_DATA) && $(call objbinary,tiles_hd.bin,tiles_hd.o)
 
-$(TGT)/data/sprites_hd.o: $(DATA)/sprites_hd.png $(TGT)/data/palette.bin $(XFORM)
+$(TGT_DATA)/sprites_hd.o: $(DATA)/sprites_hd.png $(TGT_DATA)/palette.bin $(XFORM)
 	$(MKDIR) -p $(@D)
-	$(XFORM) copy8x8 $(DATA)/sprites_hd.png $(TGT)/data/palette.bin $(TGT)/data/sprites_hd.bin
-	cd $(TGT)/data && $(call objbinary,sprites_hd.bin,sprites_hd.o)
+	$(XFORM) copy8x8 $(DATA)/sprites_hd.png $(TGT_DATA)/palette.bin $(TGT_DATA)/sprites_hd.bin
+	cd $(TGT_DATA) && $(call objbinary,sprites_hd.bin,sprites_hd.o)
 
-$(TGT)/data/worldbg.o \
-$(TGT)/data/worldlogic.o \
-$(TGT)/data/markers.o: $(DATA)/world.json $(XFORM)
+$(TGT_DATA)/worldbg.o \
+$(TGT_DATA)/worldlogic.o \
+$(TGT_DATA)/markers.o: $(DATA)/world.json $(XFORM)
 	$(MKDIR) -p $(@D)
 	$(XFORM) world $(DATA)/world.json \
-		$(TGT)/data/worldbg.bin $(TGT)/data/worldlogic.bin $(TGT)/data/markers.bin
-	cd $(TGT)/data && $(call objbinary,worldbg.bin,worldbg.o)
-	cd $(TGT)/data && $(call objbinary,worldlogic.bin,worldlogic.o)
-	cd $(TGT)/data && $(call objbinary,markers.bin,markers.o)
+		$(TGT_DATA)/worldbg.bin $(TGT_DATA)/worldlogic.bin $(TGT_DATA)/markers.bin
+	cd $(TGT_DATA) && $(call objbinary,worldbg.bin,worldbg.o)
+	cd $(TGT_DATA) && $(call objbinary,worldlogic.bin,worldlogic.o)
+	cd $(TGT_DATA) && $(call objbinary,markers.bin,markers.o)
 
-$(TGT)/data/music_tables.o \
-$(TGT)/data/music_wavs.o \
-$(TGT)/data/music_offsets.o \
-$(TGT)/data/music_names.txt: $(SOURCES_WAV) $(XFORM)
+$(TGT_SND)/snd_osc.o \
+$(TGT_SND)/snd_tempo.o \
+$(TGT_SND)/snd_slice.o \
+$(TGT_SND)/snd_dphase.o \
+$(TGT_SND)/snd_bend.o: $(XFORM)
 	$(MKDIR) -p $(@D)
-	$(XFORM) music tables $(TGT)/data/music_tables.bin
-	cd $(TGT)/data && $(call objbinary,music_tables.bin,music_tables.o)
-	$(XFORM) music wav $(WAV) \
-		$(TGT)/data/music_wavs.bin $(TGT)/data/music_offsets.bin $(TGT)/data/music_names.txt
-	cd $(TGT)/data && $(call objbinary,music_wavs.bin,music_wavs.o)
-	cd $(TGT)/data && $(call objbinary,music_offsets.bin,music_offsets.o)
+	$(XFORM) snd tables \
+		$(TGT_SND)/snd_osc.bin \
+		$(TGT_SND)/snd_tempo.bin \
+		$(TGT_SND)/snd_slice.bin \
+		$(TGT_SND)/snd_dphase.bin \
+		$(TGT_SND)/snd_bend.bin
+	cd $(TGT_SND) && $(call objbinary,snd_osc.bin,snd_osc.o)
+	cd $(TGT_SND) && $(call objbinary,snd_tempo.bin,snd_tempo.o)
+	cd $(TGT_SND) && $(call objbinary,snd_slice.bin,snd_slice.o)
+	cd $(TGT_SND) && $(call objbinary,snd_dphase.bin,snd_dphase.o)
+	cd $(TGT_SND) && $(call objbinary,snd_bend.bin,snd_bend.o)
+
+$(TGT_SND)/snd_wavs.o \
+$(TGT_SND)/snd_offsets.o \
+$(TGT_SND)/snd_sizes.o \
+$(TGT_SND)/names.txt: $(SOURCES_WAV) $(XFORM)
+	$(MKDIR) -p $(@D)
+	$(XFORM) snd wav $(SND) \
+		$(TGT_SND)/snd_wavs.bin \
+		$(TGT_SND)/snd_offsets.bin \
+		$(TGT_SND)/snd_sizes.bin \
+		$(TGT_SND)/snd_names.txt
+	cd $(TGT_SND) && $(call objbinary,snd_wavs.bin,snd_wavs.o)
+	cd $(TGT_SND) && $(call objbinary,snd_offsets.bin,snd_offsets.o)
+	cd $(TGT_SND) && $(call objbinary,snd_sizes.bin,snd_sizes.o)
 
 $(XFORM):
 	cd xform && make

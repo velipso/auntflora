@@ -13,7 +13,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #include "json.h"
-#include "music.h"
+#include "snd.h"
 
 typedef uint8_t  u8;
 typedef uint16_t u16;
@@ -29,8 +29,8 @@ static void print_usage() {
     "\n"
     "Commands:\n"
     "\n"
-    "  music <more...>\n"
-    "    Interact with the music subsystem\n"
+    "  snd <more...>\n"
+    "    Interact with the sound subsystem\n"
     "\n"
     "  fix <input.gba>\n"
     "    Patches the ROM header and pads to power of 2\n"
@@ -501,8 +501,8 @@ int main(int argc, const char **argv) {
     fclose(bg);
     json_free(jv);
     return res;
-  } else if (strcmp(argv[1], "music") == 0) {
-    return music_main(argc - 2, &argv[2]);
+  } else if (strcmp(argv[1], "snd") == 0) {
+    return snd_main(argc - 2, &argv[2]);
   } else {
     print_usage();
     fprintf(stderr, "\nUnknown command: %s\n", argv[1]);

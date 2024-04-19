@@ -7,14 +7,11 @@
 
     .section    .text, "x"
     .global     sys__irq_init
+    .include    "reg.inc"
     .cpu        arm7tdmi
     .thumb
     .thumb_func
 sys__irq_init:
-    .set REG_IME, 0x04000208
-    .set REG_IE , 0x04000200
-    .set REG_IF , 0x04000202
-
     // disable interrupts during setup
     ldr   r0, =REG_IME
     movs  r1, #0

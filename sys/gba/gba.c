@@ -5,20 +5,27 @@
 // SPDX-License-Identifier: 0BSD
 //
 
-#include "sys.h"
 #include "gba.h"
+#include "reg.h"
 
 extern void sys__irq_init();
 extern void (*sys__irq_vblank)();
+extern void (*sys__irq_timer1)();
+extern void sys__snd_timer1_handler();
+
+struct snd_st g_snd;
 
 static u16 SECTION_EWRAM g_screen_sprite_enable;
 static u16 SECTION_EWRAM g_screen_mode;
 static u16 SECTION_EWRAM g_screen_enable;
+static void (*g_vblank)();
 
 static void _sys_set_screen_mode();
+static void _sys_snd_init();
 
 void sys_init() {
   sys__irq_init();
+  _sys_snd_init();
   g_screen_sprite_enable = 0x1000;
   g_screen_enable = 0x0080;
   g_screen_mode = SYS_SCREEN_MODE_4T;
@@ -130,20 +137,68 @@ static void _sys_set_screen_mode() {
   }
 }
 
-void sys_set_vblank(void (*irq_vblank_handler)()) {
-  REG_IME = 0;
-  if (irq_vblank_handler) {
-    REG_DISPSTAT |= 0x0008;
-    REG_IE |= 1;
-    sys__irq_vblank = irq_vblank_handler;
-  } else {
-    REG_DISPSTAT &= 0xfff7;
-    REG_IE &= 0xfffe;
-    sys__irq_vblank = NULL;
-  }
+static void _sys_wrap_vblank() {
+  // allow re-entrant IRQs so timer1 for snd is handled
   REG_IME = 1;
+  if (g_vblank)
+    g_vblank();
+}
+
+void sys_set_vblank(void (*irq_vblank_handler)()) {
+  g_vblank = irq_vblank_handler;
 }
 
 void sys_nextframe() {
   __asm__("swi #5" ::: "r0", "r1", "r2", "r3", "r12", "lr", "memory", "cc");
+}
+
+static void _sys_snd_init() {
+  REG_IME = 0;
+  // enable vblank handler
+  REG_DISPSTAT |= 0x0008;
+  REG_IE |= 1;
+  g_vblank = NULL;
+  sys__irq_vblank = _sys_wrap_vblank;
+  // enable timer1 handler
+  sys__irq_timer1 = sys__snd_timer1_handler;
+  // clear struct
+  memset32(&g_snd, 0, sizeof(g_snd));
+  // enable timer1
+  REG_IE |= 0x10;
+  // setup timers
+  REG_TM0CNT = 0;
+  REG_TM1CNT = 0;
+  // setup timer0 - drives the sample rate
+  // cpuHz      = 2^24
+  // sampleRate = 2^15
+  // timer0Wait = cpuHz / sampleRate = 2^9 = 0x200
+  // timer0Res  = 1 cycle
+  // timer0Wait / timer0Res = 0x200
+  REG_TM0D = 0x10000 - 0x200;
+  // setup timer1 - drives the DMA buffer cycling
+  // bufferSize = 0x260
+  // timer1Wait = bufferSize * timer0Wait = 311296 cycles
+  // timer1Res  = 64 cycles
+  // timer1Wait / timer1Res = 0x1300
+  REG_TM1D = 0x10000 - 0x1300;
+  REG_IME = 1;
+  // turn sound chip on
+  REG_SOUNDCNT_X = 0x0080;
+  // set sound to use FIFO A
+  REG_SOUNDCNT_H = 0x0b0f;
+  // set DMA1 destination to FIFO A
+  REG_DMA1DAD = &REG_FIFO_A;
+  // point DMA1 to buffer1
+  REG_DMA1SAD = (u32)g_snd.buffer1;
+  // enable DMA1
+  REG_DMA1CNT_H = 0xb640;
+  // save alt buffers for next render
+  g_snd.buffer_addr[0] = g_snd.buffer1;
+  g_snd.buffer_addr[1] = g_snd.buffer2;
+  g_snd.buffer_addr[2] = g_snd.buffer3;
+  g_snd.next_buffer_index = 4;
+  // start timer0
+  REG_TM0CNT = 0x0080;
+  // start timer1
+  REG_TM1CNT = 0x00c1;
 }

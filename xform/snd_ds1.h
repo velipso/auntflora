@@ -5,7 +5,7 @@
 // SPDX-License-Identifier: 0BSD
 //
 
-static const double music_ds1_imag[] = {
+static const double snd_ds1_imag[] = {
   0,
   0.7030594692052654,
   0.006738270736952202,

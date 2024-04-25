@@ -72,6 +72,7 @@ OBJS := \
 	$(TGT_DATA)/worldbg.o \
 	$(TGT_DATA)/worldlogic.o \
 	$(TGT_DATA)/markers.o \
+	$(TGT_DATA)/song1.o \
 	$(TGT_SND)/snd_osc.o \
 	$(TGT_SND)/snd_tempo.o \
 	$(TGT_SND)/snd_slice.o \
@@ -158,7 +159,7 @@ $(TGT_SND)/snd_bend.o: $(XFORM)
 $(TGT_SND)/snd_wavs.o \
 $(TGT_SND)/snd_offsets.o \
 $(TGT_SND)/snd_sizes.o \
-$(TGT_SND)/names.txt: $(SOURCES_WAV) $(XFORM)
+$(TGT_SND)/snd_names.txt: $(SOURCES_WAV) $(XFORM)
 	$(MKDIR) -p $(@D)
 	$(XFORM) snd wav $(SND) \
 		$(TGT_SND)/snd_wavs.bin \
@@ -168,6 +169,11 @@ $(TGT_SND)/names.txt: $(SOURCES_WAV) $(XFORM)
 	cd $(TGT_SND) && $(call objbinary,snd_wavs.bin,snd_wavs.o)
 	cd $(TGT_SND) && $(call objbinary,snd_offsets.bin,snd_offsets.o)
 	cd $(TGT_SND) && $(call objbinary,snd_sizes.bin,snd_sizes.o)
+
+$(TGT_DATA)/song1.o: $(DATA)/song1.txt $(TGT_SND)/snd_names.txt $(XFORM)
+	$(MKDIR) -p $(@D)
+	$(XFORM) snd makesong $(DATA)/song1.txt $(TGT_SND)/snd_names.txt $(TGT_DATA)/song1.gvsong
+	cd $(TGT_DATA) && $(call objbinary,song1.gvsong,song1.o)
 
 $(XFORM):
 	cd xform && make

@@ -35,6 +35,7 @@ BINFILE(sprites_hd_bin);
 BINFILE(worldbg_bin);
 BINFILE(worldlogic_bin);
 BINFILE(markers_bin);
+BINFILE(song1_gvsong);
 
 void move_screen_to_player();
 void copy_world_offset();

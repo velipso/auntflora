@@ -184,3 +184,21 @@ void debug_main() {
     }
   }
 }
+
+void debug_print_number(u32 num) {
+  sys_init();
+  sys_set_vblank(irq_vblank);
+  sys_set_screen_mode(SYS_SCREEN_MODE_1F);
+  sys_set_screen_enable(1);
+
+  for (int y = 0; y < 160; y++) {
+    for (int x = 0; x < 240; x++)
+      sys_pset_1f(x, y, 0);
+  }
+
+  pcolor = RGB15(31, 31, 31);
+  print_num(0, 0, num);
+
+  while (1)
+    sys_nextframe();
+}

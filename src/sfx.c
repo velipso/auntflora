@@ -5,10 +5,20 @@
 // SPDX-License-Identifier: 0BSD
 //
 
-#pragma once
-#include "sys.h"
+#include "sfx.h"
 
-void snd_walk();
-void snd_push();
-void snd_forward();
-void snd_bump();
+void sfx_walk() {
+  // TODO: this
+}
+
+void sfx_push() {
+  // TODO: this
+}
+
+void sfx_forward() {
+  // TODO: this
+}
+
+void sfx_bump() {
+  // TODO: this
+}

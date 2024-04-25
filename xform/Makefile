@@ -29,6 +29,6 @@ $(TGT)/$(NAME): $(OBJS)
 	$(CC) -o $@ $(OBJS) $(LDFLAGS)
 
 clean:
-	$(RM) $(TGT)/$(NAME)
+	$(RM) $(TGT)
 
 -include $(DEPS)

@@ -12,6 +12,7 @@ extern void sys__irq_init();
 extern void (*sys__irq_vblank)();
 extern void (*sys__irq_timer1)();
 extern void sys__snd_timer1_handler();
+extern void sys__snd_frame();
 
 struct snd_st g_snd;
 
@@ -22,6 +23,8 @@ static void (*g_vblank)();
 
 static void _sys_set_screen_mode();
 static void _sys_snd_init();
+
+BINFILE(snd_tempo_bin);
 
 void sys_init() {
   sys__irq_init();
@@ -104,10 +107,14 @@ static void _sys_set_screen_mode() {
         0x0800;  // enable BG3
 
       // set scaling registers
+      REG_BG2X = 0;
+      REG_BG2Y = 0;
       REG_BG2PA = 0x019a; // 8/5 * 0x100
       REG_BG2PB = 0;
       REG_BG2PC = 0;
       REG_BG2PD = 0x019a; // 8/5 * 0x100
+      REG_BG3X = 0;
+      REG_BG3Y = 0;
       REG_BG3PA = 0x019a; // 8/5 * 0x100
       REG_BG3PB = 0;
       REG_BG3PC = 0;
@@ -119,6 +126,14 @@ static void _sys_set_screen_mode() {
         g_screen_sprite_enable |
         0x0003 | // mode 3
         0x0400;  // enable BG2
+
+      // reset registers
+      REG_BG2X = 0;
+      REG_BG2Y = 0;
+      REG_BG2PA = 0x0100;
+      REG_BG2PB = 0;
+      REG_BG2PC = 0;
+      REG_BG2PD = 0x0100;
       break;
     case SYS_SCREEN_MODE_2F: // 2 full-color, arbitrary scaling
       REG_DISPCNT =
@@ -142,6 +157,7 @@ static void _sys_wrap_vblank() {
   REG_IME = 1;
   if (g_vblank)
     g_vblank();
+  sys__snd_frame();
 }
 
 void sys_set_vblank(void (*irq_vblank_handler)()) {
@@ -187,7 +203,7 @@ static void _sys_snd_init() {
   // set sound to use FIFO A
   REG_SOUNDCNT_H = 0x0b0f;
   // set DMA1 destination to FIFO A
-  REG_DMA1DAD = &REG_FIFO_A;
+  REG_DMA1DAD = (u32)&REG_FIFO_A;
   // point DMA1 to buffer1
   REG_DMA1SAD = (u32)g_snd.buffer1;
   // enable DMA1
@@ -201,4 +217,37 @@ static void _sys_snd_init() {
   REG_TM0CNT = 0x0080;
   // start timer1
   REG_TM1CNT = 0x00c1;
+}
+
+void debug_print_number(u32 num);
+void snd_load_song(void *song_base, int sequence) {
+  int volume = g_snd.synth[0].volume;
+  memset32(&g_snd.synth[0], 0, sizeof(struct snd_synth_st));
+  g_snd.synth[0].volume = volume;
+  g_snd.synth[0].song_base = song_base;
+  g_snd.synth[0].sequence = sequence;
+  // set pattern pointer to sequence's first pattern
+  const struct snd_song_st *song = song_base;
+  int seq_offset = *((int *)(song_base + song->seq_table_offset + sequence * 4));
+  const struct snd_songseq_st *songseq = song_base + seq_offset;
+  u16 patterns = songseq->patterns[0];
+  u32 pat_offset = *((u32 *)(song_base + song->pat_table_offset + patterns * 4));
+  g_snd.synth[0].pat = song_base + pat_offset;
+
+  // set tempo to index 0
+  const u16 *tempo_table = BINADDR(snd_tempo_bin);
+  g_snd.synth[0].tick_start = tempo_table[0];
+  g_snd.synth[0].tick_left = 0;
+
+  // initialize channel volume
+  for (int i = 0; i < song->channel_count; i++)
+    g_snd.synth[0].channel[i].chan_volume = 8;
+}
+
+void snd_set_master_volume(int v) {
+  g_snd.master_volume = v < 0 ? 0 : v > 16 ? 16 : v;
+}
+
+void snd_set_synth_volume(int synth, int v) {
+  g_snd.synth[synth].volume = v < 0 ? 0 : v > 16 ? 16 : v;
 }

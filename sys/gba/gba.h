@@ -11,6 +11,40 @@
 #define SND_MAX_CHANNELS  6
 #define SND_BUFFER_SIZE   608
 
+struct snd_song_st {
+  int magic;
+  u8 version;
+  u8 channel_count;
+  u8 reserved;
+  u8 samps_length;
+  u8 insts_length;
+  u8 seqs_length;
+  u16 pats_length;
+  int inst_table_offset;
+  int seq_table_offset;
+  int pat_table_offset;
+  u16 samp_table[1]; // variable length array
+};
+
+struct snd_songinst_st {
+  u16 wave;
+  char volume_env_attack;
+  char volume_env_sustain;
+  char volume_env_length;
+  char pitch_env_attack;
+  char pitch_env_sustain;
+  char pitch_env_length;
+  u16 volume_env_offset;
+  u16 pitch_env_offset;
+};
+
+struct snd_songseq_st {
+  u16 pat_length;
+  u16 loop_index;
+  u16 exit;
+  u16 patterns[1]; // variable length array
+};
+
 struct snd_channel_st {
   int state; // 0 off, 1 note released, 2 note on
   int delay;
@@ -31,7 +65,7 @@ struct snd_channel_st {
   #if defined(__GBA__)
   int *inst_base;
   #else
-  int inst_base;
+  int inst_base; // force pointers to take up 32-bits when using xform on 64-bit machines
   #endif
 };
 
@@ -39,7 +73,7 @@ struct snd_synth_st {
   #if defined(__GBA__)
   void *song_base;
   #else
-  int song_base; // force pointers to take up 32-bits when using xform on 64-bit machines
+  int song_base;
   #endif
   int sequence;
   int tempo_index;

@@ -8,3 +8,4 @@
 #pragma once
 
 void debug_main();
+void debug_print_number(u32 num);

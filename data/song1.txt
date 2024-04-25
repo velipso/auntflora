@@ -1,0 +1,58 @@
+# Effect: 2 bits comand, 6 bits payload
+#  00 delay (continue, end, bend0, 0-60)
+#  01 volume (0-16), instrument (0-46)
+#  10 bend (1-64)
+#  11 tempo (0-63)
+# Note: 1 bit PCM flag, 7 bits note/sample
+
+#
+# TODO:
+# 1. implement phase reset/continue
+# 2. test delay
+# 3. test bend
+# 4. test envelopes; unspecified loop points; push 0 on volume/pitch; sequence loop
+# 5. test instrument 0 'OFF'
+# 6. document
+# 7. re-implement sfx
+# 8. implement synth[1]
+#
+
+new instrument SQ8
+  wave: sq8  # or sq1-8, tri, saw, sin, ds1, ds2
+  phase: reset  # or continue (reset = 0, continue = 1)
+  volume:
+    16 15 14 13 13 13 12 12 12 11 11 10 10 9 9 9 8 8 8 {7 7 7 7} 7 6 6
+    5 5 4 4 3 3 3 2 2 2 1 1
+  pitch:
+    0 0 0 0 0 0 0 0 0 0 0 {2 4 2 0 -2 -4 -2 0}
+end
+
+new instrument TRI
+  wave: tri
+  phase: reset
+  volume: 16 14 12 {10} 8 6 4 2
+end
+
+new sample KI1
+  wave: kick1
+  volume: 9
+end
+
+new sequence 0
+  setup
+  {body}
+end
+
+new pattern setup
+  00  ---:V08  ---:V08
+  00  ---:SQ8  ---:TRI
+  00  ---:112  ---:END
+end
+
+new pattern body
+  00  C-4:---  E-4:---
+  10  E-4:---  G-4:---
+  20  G-4:---  C-5:---
+  30  E-4:---  G-4:---
+  40  END:END  END:END
+end

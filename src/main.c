@@ -12,7 +12,7 @@
 #include "anidata.h"
 #include "util.h"
 #include "cellinfo.h"
-#include "snd.h"
+#include "sfx.h"
 #include "undo.h"
 
 u8 g_map0[64 * 64] = {0};
@@ -228,6 +228,11 @@ void gvmain() {
 
   g_viewport = find_player_level();
   snap_player();
+
+  snd_set_master_volume(16);
+  snd_set_synth_volume(0, 16);
+  snd_load_song(BINADDR(song1_gvsong), 0);
+
   while (1) {
     nextframe();
 
@@ -252,7 +257,7 @@ void gvmain() {
         if (!is_solid_static(cell)) {
           pushers_reset();
           if (is_empty_for_player(cell)) {
-            snd_walk();
+            sfx_walk();
             pushers_find_around_player(dir);
             write_player(nx, ny, dir, -1);
           } else if (is_pushable_by_player(cell, dir)) {
@@ -269,7 +274,7 @@ void gvmain() {
                   write_logic(hx, hy, world_at(px, py));
                 }
                 write_logic(nx, ny, 0);
-                snd_push();
+                sfx_push();
                 pushers_find_around_player(dir);
                 write_player(nx, ny, dir, -1);
                 break;
@@ -286,7 +291,7 @@ void gvmain() {
           } else if (is_forward(cell, dir)) {
             advance_pt(&nx, &ny, dir, 1);
             if (is_empty_for_player(world_at(nx, ny))) {
-              snd_forward();
+              sfx_forward();
               pushers_find_around_player(dir);
               write_player(nx, ny, dir, -1);
             }
@@ -299,7 +304,7 @@ void gvmain() {
           undo_finish();
           move_screen_to_player();
         } else {
-          snd_bump();
+          sfx_bump();
           set_player_ani_dir(dir);
         }
       }

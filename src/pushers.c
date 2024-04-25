@@ -9,7 +9,7 @@
 #include "main.h"
 #include "util.h"
 #include "cellinfo.h"
-#include "snd.h"
+#include "sfx.h"
 #include "undo.h"
 
 #define PUSHERS_SIZE  32
@@ -113,7 +113,7 @@ void pushers_apply() {
             move_screen_to_player();
             copy_world_offset();
             delay_push();
-            snd_push();
+            sfx_push();
             dirty = 1;
           }
           int hx, hy;

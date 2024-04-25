@@ -67,7 +67,7 @@ void sys_set_vblank(void (*irq_vblank_handler)());
 void sys_nextframe();
 void snd_load_song(void *song_base, int sequence);
 void snd_set_master_volume(int v);
-void snd_set_synth_volume(int synth, int v);
+void snd_set_song_volume(int v);
 
 #define RGB15(r, g, b)  (((r) & 0x1f) | (((g) & 0x1f) << 5) | (((b) & 0x1f) << 10))
 

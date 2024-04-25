@@ -14,7 +14,7 @@
 # 5. test instrument 0 'OFF'
 # 6. document
 # 7. re-implement sfx
-# 8. implement synth[1]
+# 8. save/restore synth state
 #
 
 new instrument SQ8

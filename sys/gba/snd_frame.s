@@ -66,35 +66,35 @@ sys__snd_frame:
 
     // check for muted sound immediately so we don't access the cart if
     // sound is completely muted
-    ldr   r0, =g_snd + SND_MASTER_VOLUME
-    ldr   r0, [r0]
+    #define rSndPtr        r4
+    ldr   rSndPtr, =g_snd
+    ldr   r0, [rSndPtr, #SND_MASTER_VOLUME]
+    cmp   r0, #0
+    beq   mute_all_sound
+    // check for no song loaded
+    ldr   r0, [rSndPtr, #SND_SYNTH + SND_SYNTH_SONG_BASE]
     cmp   r0, #0
     beq   mute_all_sound
 
     // advance tick counter
-    #define rTickStartPtr  r4
     #define rTickStart     r5
-    #define rTickLeftPtr   r6
-    #define rTickLeft      r7
-    ldr   rTickStartPtr, =g_snd + SND_SYNTH + SND_SYNTH_TICK_START
-    ldr   rTickLeftPtr, =g_snd + SND_SYNTH + SND_SYNTH_TICK_LEFT
-    ldr   rTickLeft, [rTickLeftPtr]
+    #define rTickLeft      r6
+    ldr   rTickLeft, [rSndPtr, #SND_SYNTH + SND_SYNTH_TICK_LEFT]
     subs  rTickLeft, #256
-    str   rTickLeft, [rTickLeftPtr]
+    str   rTickLeft, [rSndPtr, #SND_SYNTH + SND_SYNTH_TICK_LEFT]
     bgt   done_tick
 run_tick:
     bl    snd_tick
     // snd_tick could change tick_start/tick_left
-    ldr   rTickStart, [rTickStartPtr]
+    ldr   rTickStart, [rSndPtr, #SND_SYNTH + SND_SYNTH_TICK_START]
     muls  r0, rTickStart
-    ldr   rTickLeft, [rTickLeftPtr]
+    ldr   rTickLeft, [rSndPtr, #SND_SYNTH + SND_SYNTH_TICK_LEFT]
     adds  rTickLeft, r0
-    str   rTickLeft, [rTickLeftPtr]
+    str   rTickLeft, [rSndPtr, #SND_SYNTH + SND_SYNTH_TICK_LEFT]
     cmp   rTickLeft, #0
     ble   run_tick
-    #undef rTickStartPtr
+    #undef rSndPtr
     #undef rTickStart
-    #undef rTickLeftPtr
     #undef rTickLeft
 done_tick:
 

@@ -90,7 +90,7 @@ struct snd_synth_st {
 };
 
 struct snd_st {
-  struct snd_synth_st synth[2];
+  struct snd_synth_st synth;
 
   // buffer_addr[0] points to the DMA source
   // buffer_addr[1] is the DMA source on deck

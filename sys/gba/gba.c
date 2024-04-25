@@ -221,33 +221,33 @@ static void _sys_snd_init() {
 
 void debug_print_number(u32 num);
 void snd_load_song(void *song_base, int sequence) {
-  int volume = g_snd.synth[0].volume;
-  memset32(&g_snd.synth[0], 0, sizeof(struct snd_synth_st));
-  g_snd.synth[0].volume = volume;
-  g_snd.synth[0].song_base = song_base;
-  g_snd.synth[0].sequence = sequence;
+  int volume = g_snd.synth.volume;
+  memset32(&g_snd.synth, 0, sizeof(struct snd_synth_st));
+  g_snd.synth.volume = volume;
+  g_snd.synth.song_base = song_base;
+  g_snd.synth.sequence = sequence;
   // set pattern pointer to sequence's first pattern
   const struct snd_song_st *song = song_base;
   int seq_offset = *((int *)(song_base + song->seq_table_offset + sequence * 4));
   const struct snd_songseq_st *songseq = song_base + seq_offset;
   u16 patterns = songseq->patterns[0];
   u32 pat_offset = *((u32 *)(song_base + song->pat_table_offset + patterns * 4));
-  g_snd.synth[0].pat = song_base + pat_offset;
+  g_snd.synth.pat = song_base + pat_offset;
 
   // set tempo to index 0
   const u16 *tempo_table = BINADDR(snd_tempo_bin);
-  g_snd.synth[0].tick_start = tempo_table[0];
-  g_snd.synth[0].tick_left = 0;
+  g_snd.synth.tick_start = tempo_table[0];
+  g_snd.synth.tick_left = 0;
 
   // initialize channel volume
   for (int i = 0; i < song->channel_count; i++)
-    g_snd.synth[0].channel[i].chan_volume = 8;
+    g_snd.synth.channel[i].chan_volume = 8;
 }
 
 void snd_set_master_volume(int v) {
   g_snd.master_volume = v < 0 ? 0 : v > 16 ? 16 : v;
 }
 
-void snd_set_synth_volume(int synth, int v) {
-  g_snd.synth[synth].volume = v < 0 ? 0 : v > 16 ? 16 : v;
+void snd_set_song_volume(int v) {
+  g_snd.synth.volume = v < 0 ? 0 : v > 16 ? 16 : v;
 }

@@ -8,17 +8,33 @@
 #include "sfx.h"
 
 void sfx_walk() {
-  // TODO: this
+  // nothing
 }
 
 void sfx_push() {
-  // TODO: this
+  static int sfx = -2;
+  if (sfx == -2)
+    sfx = snd_find_wav("push");
+  snd_play_wav(sfx, 10, 10);
 }
 
 void sfx_forward() {
-  // TODO: this
+  static int sfx = -2;
+  if (sfx == -2)
+    sfx = snd_find_wav("teleport");
+  snd_play_wav(sfx, 15, 10);
 }
 
 void sfx_bump() {
-  // TODO: this
+  static int sfx = -2;
+  if (sfx == -2)
+    sfx = snd_find_wav("bump");
+  snd_play_wav(sfx, 16, 10);
+}
+
+void sfx_splash() {
+  static int sfx = -2;
+  if (sfx == -2)
+    sfx = snd_find_wav("splash");
+  snd_play_wav(sfx, 8, 10);
 }

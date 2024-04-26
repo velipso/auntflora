@@ -379,16 +379,29 @@ render_channel_continue:
     #define rSfxPtr1         r2
     #define rSfxPtr2         r3
     #define rSfxPtr3         r4
-    #define rSfxSample       r5
-    #define rSfxSampleIdx    r6
-    #define rPackedVolumes   r7
-    #define rSynthSample     r8
-    #define rInput           r9
-    #define rOutput          r10
-    #define rSampleLeft      r11
-    #define rDidClear        ip
+    #define rSfxVolumes      r5
+    #define rSfxSample       r6
+    #define rSfxSampleIdx    r7
+    #define rPackedVolumes   r8
+    #define rSynthSample     r9
+    #define rInput           r10
+    #define rOutput          r11
+    #define rSampleLeft      ip
+    #define rDidClear        lr
 
     ldr   r0, =g_snd + SND_SFX
+    // pack sfx volumes into register
+    ldr   rSfxVolumes, [r0, #SND_SFX_WAV_VOLUME + SIZEOF_SND_SFX_ST * 0]
+    ldr   rSfxPtr1, [r0, #SND_SFX_WAV_VOLUME + SIZEOF_SND_SFX_ST * 1]
+    lsls  rSfxPtr1, #8
+    orrs  rSfxVolumes, rSfxPtr1
+    ldr   rSfxPtr1, [r0, #SND_SFX_WAV_VOLUME + SIZEOF_SND_SFX_ST * 2]
+    lsls  rSfxPtr1, #16
+    orrs  rSfxVolumes, rSfxPtr1
+    ldr   rSfxPtr1, [r0, #SND_SFX_WAV_VOLUME + SIZEOF_SND_SFX_ST * 3]
+    lsls  rSfxPtr1, #24
+    orrs  rSfxVolumes, rSfxPtr1
+    // load sfx wave pointers
     ldr   rSfxPtr0, [r0, #SND_SFX_WAV_BASE + SIZEOF_SND_SFX_ST * 0]
     ldr   rSfxPtr1, [r0, #SND_SFX_WAV_BASE + SIZEOF_SND_SFX_ST * 1]
     ldr   rSfxPtr2, [r0, #SND_SFX_WAV_BASE + SIZEOF_SND_SFX_ST * 2]
@@ -411,35 +424,56 @@ render_channel_continue:
     movs  rSampleLeft, #608
 copy_next_sample:
     // each rPackedVolume is 4bit (0-16)
+    // each rSfxVolumes is 4bit (0-16)
     // rInput is 16bit
     // rOutput is 8bit
     // rSfxPtrX is 16bit
-    movs  rSynthSample, #0
-    cmp   rDidClear, #0
-    // read synth sample and apply synth volume
-    ldrnesh rSynthSample, [rInput]
-    ands  r0, rPackedVolumes, #0xff
-    muls  rSynthSample, r0
 
-    // sound effects
+    // sfx 0
     movs  rSfxSample, #0
     cmp   rSfxPtr0, #0
     ldrnesh r0, [rSfxPtr0, rSfxSampleIdx]
+    andne rSynthSample, rSfxVolumes, #0xff
+    mulne r0, rSynthSample
     addne rSfxSample, r0
+
+    // sfx 1
     cmp   rSfxPtr1, #0
     ldrnesh r0, [rSfxPtr1, rSfxSampleIdx]
+    andne rSynthSample, rSfxVolumes, #0xff00
+    lsrne rSynthSample, #8
+    mulne r0, rSynthSample
     addne rSfxSample, r0
+
+    // sfx 2
     cmp   rSfxPtr2, #0
     ldrnesh r0, [rSfxPtr2, rSfxSampleIdx]
+    andne rSynthSample, rSfxVolumes, #0xff0000
+    lsrne rSynthSample, #16
+    mulne r0, rSynthSample
     addne rSfxSample, r0
+
+    // sfx 3
     cmp   rSfxPtr3, #0
     ldrnesh r0, [rSfxPtr3, rSfxSampleIdx]
+    andne rSynthSample, rSfxVolumes, #0xff000000
+    lsrne rSynthSample, #24
+    mulne r0, rSynthSample
     addne rSfxSample, r0
 
     // apply sfx volume
     ands  r0, rPackedVolumes, #0xff00
     lsrs  r0, #8
     muls  rSfxSample, r0
+    lsrs  rSfxSample, #4
+
+    // synth
+    movs  rSynthSample, #0
+    cmp   rDidClear, #0
+    // read synth sample and apply synth volume
+    ldrnesh rSynthSample, [rInput]
+    ands  r0, rPackedVolumes, #0xff
+    muls  rSynthSample, r0
 
     // final sample
     adds  rSynthSample, rSfxSample
@@ -470,6 +504,7 @@ copy_next_sample:
     #undef rSfxPtr1
     #undef rSfxPtr2
     #undef rSfxPtr3
+    #undef rSfxVolumes
     #undef rSfxSample
     #undef rSfxSampleIdx
     #undef rPackedVolumes

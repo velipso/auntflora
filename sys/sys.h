@@ -67,11 +67,11 @@ void sys_set_screen_mode(i32 mode);
 void sys_set_vblank(void (*irq_vblank_handler)());
 void sys_nextframe();
 void snd_load_song(const void *song_base, int sequence);
-void snd_set_master_volume(int v);
-void snd_set_song_volume(int v);
-void snd_set_sfx_volume(int v);
+void snd_set_master_volume(int v); // 0-16
+void snd_set_song_volume(int v); // 0-16
+void snd_set_sfx_volume(int v); // 0-16
 int snd_find_wav(const char *name);
-bool snd_play_wav(int wav_index, int priority);
+bool snd_play_wav(int wav_index, int volume /* 0-16 */, int priority);
 
 #define RGB15(r, g, b)  (((r) & 0x1f) | (((g) & 0x1f) << 5) | (((b) & 0x1f) << 10))
 

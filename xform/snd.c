@@ -727,7 +727,7 @@ static int snd_wav(
 
     // output everything
     if (total_wavs < 0x1000) {
-      printf("%s:\n  next_offset %08X\n  size %08X\n", file.name, next_offset, size);
+      //printf("%s:\n  next_offset %08X\n  size %08X\n", file.name, next_offset, size);
       fprintf(names_fp, "%.*s\n", flen - 4, file.name);
       fwrite(&next_offset, sizeof(uint32_t), 1, offsets_fp);
       fwrite(&size, sizeof(uint32_t), 1, sizes_fp);
@@ -885,6 +885,7 @@ int snd_main(int argc, const char **argv) {
     print_syoff("CHANNEL"                , channel                       );
     print_offset("SIZEOF_SND_SYNTH_ST"   , sizeof(struct snd_synth_st)   );
     print_sfoff("WAV_BASE"               , wav_base                      );
+    print_sfoff("WAV_VOLUME"             , wav_volume                    );
     print_sfoff("SAMPLES_LEFT"           , samples_left                  );
     print_sfoff("PRIORITY"               , priority                      );
     print_offset("SIZEOF_SND_SFX_ST"     , sizeof(struct snd_sfx_st)     );

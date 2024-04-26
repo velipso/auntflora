@@ -47,6 +47,11 @@ static inline u16 world_at(int x, int y) {
   return g_world.data[x + y * g_world.width];
 }
 
+static inline u8 worldbg_at(int x, int y) {
+  const u8 *bg = BINADDR(worldbg_bin);
+  return bg[x * 2 + (y * 2) * g_world.width * 2];
+}
+
 static inline void delay_push() {
   for (int i = 0; i < 10; i++)
     nextframe();

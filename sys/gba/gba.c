@@ -293,7 +293,7 @@ int snd_find_wav(const char *name) {
   return -1;
 }
 
-bool snd_play_wav(int wav_index, int priority) {
+bool snd_play_wav(int wav_index, int volume, int priority) {
   if (wav_index < 0)
     return false;
   // look for either an empty slot or the lowest priority slot
@@ -316,6 +316,7 @@ place_in_slot:
   const u32 *offsets = BINADDR(snd_offsets_bin);
   const u32 *sizes = BINADDR(snd_sizes_bin);
   g_snd.sfx[slot].wav_base = &wavs[offsets[wav_index]];
+  g_snd.sfx[slot].wav_volume = volume;
   g_snd.sfx[slot].samples_left = sizes[wav_index];
   g_snd.sfx[slot].priority = priority;
   return true;

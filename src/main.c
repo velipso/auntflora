@@ -230,7 +230,7 @@ void gvmain() {
   snap_player();
 
   snd_set_master_volume(16);
-  snd_set_song_volume(16);
+  snd_set_song_volume(0);
   snd_set_sfx_volume(16);
   snd_load_song(BINADDR(song1_gvsong), 0);
 
@@ -238,7 +238,6 @@ void gvmain() {
     nextframe();
 
     if (g_inputhit & SYS_INPUT_B) {
-      snd_play_wav(0, 0);
       // undo
       undo_fire();
       g_viewport = find_player_level();
@@ -259,7 +258,11 @@ void gvmain() {
         if (!is_solid_static(cell)) {
           pushers_reset();
           if (is_empty_for_player(cell)) {
-            sfx_walk();
+            int bg = worldbg_at(nx, ny) & 0x1f;
+            if (bg >= 6 && bg <= 9)
+              sfx_splash();
+            else
+              sfx_walk();
             pushers_find_around_player(dir);
             write_player(nx, ny, dir, -1);
           } else if (is_pushable_by_player(cell, dir)) {

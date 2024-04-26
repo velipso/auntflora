@@ -96,6 +96,7 @@ struct snd_sfx_st {
   #else
   int wav_base;
   #endif
+  int wav_volume;
   int samples_left;
   int priority;
 };

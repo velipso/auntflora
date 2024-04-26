@@ -13,8 +13,7 @@
 # 4. test envelopes; unspecified loop points; push 0 on volume/pitch; sequence loop
 # 5. test instrument 0 'OFF'
 # 6. document
-# 7. re-implement sfx
-# 8. save/restore synth state
+# 7. save/restore synth state
 #
 
 new instrument SQ8
@@ -33,9 +32,9 @@ new instrument TRI
   volume: 16 14 12 {10} 8 6 4 2
 end
 
-new sample KI1
-  wave: kick1
-  volume: 9
+new sample SFX
+  wave: hatclosed1
+  volume: 16
 end
 
 new sequence 0
@@ -50,9 +49,8 @@ new pattern setup
 end
 
 new pattern body
-  00  C-4:---  E-4:---
-  10  E-4:---  G-4:---
-  20  G-4:---  C-5:---
-  30  E-4:---  G-4:---
-  40  END:END  END:END
+  00  C-4:---  E-4:V08
+  10  OFF:---  OFF:---
+  40  ---:---  SFX:V16
+  80  END:END  END:END
 end

@@ -635,6 +635,7 @@ struct song_st *song_new(const char *input, const char *names_file) {
         goto cleanup_fail;
     }
     free(tok);
+    fclose(fp);
   }
 
   { // validate `new (instrument|sample|sequence|pattern) ... end`

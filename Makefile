@@ -80,16 +80,27 @@ OBJS := \
 	$(TGT_SND)/snd_bend.o \
 	$(TGT_SND)/snd_wavs.o \
 	$(TGT_SND)/snd_offsets.o \
-	$(TGT_SND)/snd_sizes.o
+	$(TGT_SND)/snd_sizes.o \
+	$(TGT_SND)/snd_names.o
 
 DEPS := $(OBJS:.o=.d)
+
+# verifies binary files are divisible by 4 -- apparently the linker script just ignores alignment
+# for binary blobs!??
+verifyfilealign = \
+	filesize=$$(wc -c $(1) | awk '{print $$1}'); \
+	if [ $$((filesize % 4)) -ne 0 ]; then \
+		echo "Error: File size of $(1) is not divisible by 4"; \
+		exit 1; \
+	fi
 
 # converts a binary file to an object file in the ROM
 #   input.bin -> input.o
 #     extern const u8 _binary_input_bin_start[];
 #     extern const u8 _binary_input_bin_end[];
 #     extern const u8 _binary_input_bin_size[];
-objbinary = $(OBJCOPY) -I binary -O elf32-littlearm -B arm \
+objbinary = $(call verifyfilealign,$1) ;\
+	$(OBJCOPY) -I binary -O elf32-littlearm -B arm \
 	--rename-section .data=.rodata,alloc,load,readonly,data,contents \
 	$1 $2
 
@@ -159,6 +170,7 @@ $(TGT_SND)/snd_bend.o: $(XFORM)
 $(TGT_SND)/snd_wavs.o \
 $(TGT_SND)/snd_offsets.o \
 $(TGT_SND)/snd_sizes.o \
+$(TGT_SND)/snd_names.o \
 $(TGT_SND)/snd_names.txt: $(SOURCES_WAV) $(XFORM)
 	$(MKDIR) -p $(@D)
 	$(XFORM) snd wav $(SND) \
@@ -169,6 +181,7 @@ $(TGT_SND)/snd_names.txt: $(SOURCES_WAV) $(XFORM)
 	cd $(TGT_SND) && $(call objbinary,snd_wavs.bin,snd_wavs.o)
 	cd $(TGT_SND) && $(call objbinary,snd_offsets.bin,snd_offsets.o)
 	cd $(TGT_SND) && $(call objbinary,snd_sizes.bin,snd_sizes.o)
+	cd $(TGT_SND) && $(call objbinary,snd_names.txt,snd_names.o)
 
 $(TGT_DATA)/song1.o: $(DATA)/song1.txt $(TGT_SND)/snd_names.txt $(XFORM)
 	$(MKDIR) -p $(@D)

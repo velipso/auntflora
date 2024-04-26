@@ -231,12 +231,14 @@ void gvmain() {
 
   snd_set_master_volume(16);
   snd_set_song_volume(16);
+  snd_set_sfx_volume(16);
   snd_load_song(BINADDR(song1_gvsong), 0);
 
   while (1) {
     nextframe();
 
     if (g_inputhit & SYS_INPUT_B) {
+      snd_play_wav(0, 0);
       // undo
       undo_fire();
       g_viewport = find_player_level();

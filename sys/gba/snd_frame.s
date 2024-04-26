@@ -183,6 +183,9 @@ render_channel:
 
     ldr   rPhaseMask, =0xffe0
 next_osc_sample: // core loop!
+    // rWave data is 15bit
+    // rOutputBuffer is 16bit
+    // rFinalVolume is 8bit (0-256)
     cmp   rChannelLeft, #0
     moveq rSample0, #0
     ldrne rSample0, [rOutputBuffer]
@@ -300,16 +303,19 @@ render_pcm_inst:
     ldr   r0, [rSample0, r0]
     ldr   rSamplePtr, =_binary_snd_wavs_bin_start
     adds  rSamplePtr, r0
-
     ldr   r0, [rChannelPtr, #SND_CHANNEL_CHAN_VOLUME]
     muls  rFinalVolume, r0
     ldr   rPhase, [rChannelPtr, #SND_CHANNEL_PHASE]
+    lsls  rPhase, #1
 
     // cache rChannelLeft and load sDidClear
     str   rChannelLeft, [sp, #sChannelLeft]
     ldr   rChannelLeft, [sp, #sDidClear]
 
 next_pcm_sample: // core loop!
+    // rFinalVolume is 8bit (0-256)
+    // rOutputBuffer is 16bit
+    // rSamplePtr is 16bit
     cmp   rChannelLeft, #0
     moveq rSample0, #0
     ldrne rSample0, [rOutputBuffer]
@@ -318,20 +324,18 @@ next_pcm_sample: // core loop!
     asrs  rSample0, #16
 
     // render PCM sample
-    lsls  r0, rPhase, #1
-    ldrsh r0, [rSamplePtr, r0]
+    ldrsh r0, [rSamplePtr, rPhase]
     muls  r0, rFinalVolume
     asrs  r0, #8
     adds  rSample0, r0
-    adds  rPhase, #1
+    adds  rPhase, #2
 
     // render another sample, since we're here
-    lsls  r0, rPhase, #1
-    ldrsh r0, [rSamplePtr, r0]
+    ldrsh r0, [rSamplePtr, rPhase]
     muls  r0, rFinalVolume
     asrs  r0, #8
     adds  rSample1, r0
-    adds  rPhase, #1
+    adds  rPhase, #2
 
     // save results
     strh  rSample0, [rOutputBuffer, #0]
@@ -342,6 +346,7 @@ next_pcm_sample: // core loop!
     bne   next_pcm_sample
     // end core loop
 
+    lsrs rPhase, #1
     str  rPhase, [rChannelPtr, #SND_CHANNEL_PHASE]
 
     // uncache rChannelLeft and load sDidClear
@@ -370,38 +375,129 @@ render_channel_continue:
     //
     // Copy to final buffer
     //
-    ldr   r0, =g_snd + SND_SYNTH + SND_SYNTH_VOLUME
-    ldr   r0, [r0]
-    ldr   r1, =g_snd + SND_MASTER_VOLUME
-    ldr   r1, [r1]
-    ldr   r2, [sp, #sDidClear]
-    ldr   r3, [sp, #sOutputBuffer]
-    ldr   r4, =g_snd + SND_BUFFER_TEMP
-    movs  r5, #608
+    #define rSfxPtr0         r1
+    #define rSfxPtr1         r2
+    #define rSfxPtr2         r3
+    #define rSfxPtr3         r4
+    #define rSfxSample       r5
+    #define rSfxSampleIdx    r6
+    #define rPackedVolumes   r7
+    #define rSynthSample     r8
+    #define rInput           r9
+    #define rOutput          r10
+    #define rSampleLeft      r11
+    #define rDidClear        ip
+
+    ldr   r0, =g_snd + SND_SFX
+    ldr   rSfxPtr0, [r0, #SND_SFX_WAV_BASE + SIZEOF_SND_SFX_ST * 0]
+    ldr   rSfxPtr1, [r0, #SND_SFX_WAV_BASE + SIZEOF_SND_SFX_ST * 1]
+    ldr   rSfxPtr2, [r0, #SND_SFX_WAV_BASE + SIZEOF_SND_SFX_ST * 2]
+    ldr   rSfxPtr3, [r0, #SND_SFX_WAV_BASE + SIZEOF_SND_SFX_ST * 3]
+
+    // load volumes into rPackedVolumes 0xAABBCC (AA = Master, BB = SFX, CC = Synth)
+    ldr   r0, =g_snd
+    ldr   rPackedVolumes, [r0, #SND_SYNTH + SND_SYNTH_VOLUME]
+    ldr   rSampleLeft, [r0, #SND_SFX_VOLUME]
+    lsls  rSampleLeft, #8
+    orrs  rPackedVolumes, rSampleLeft
+    ldr   rSampleLeft, [r0, #SND_MASTER_VOLUME]
+    lsls  rSampleLeft, #16
+    orrs  rPackedVolumes, rSampleLeft
+
+    ldr   rDidClear, [sp, #sDidClear]
+    ldr   rOutput, [sp, #sOutputBuffer]
+    ldr   rInput, =g_snd + SND_BUFFER_TEMP
+    movs  rSfxSampleIdx, #0
+    movs  rSampleLeft, #608
 copy_next_sample:
-    cmp   r2, #0
-    moveq r6, #0
-    ldrnesh r6, [r4]
-    // apply synth volume
-    muls  r6, r0
-    asrs  r6, #7
+    // each rPackedVolume is 4bit (0-16)
+    // rInput is 16bit
+    // rOutput is 8bit
+    // rSfxPtrX is 16bit
+    movs  rSynthSample, #0
+    cmp   rDidClear, #0
+    // read synth sample and apply synth volume
+    ldrnesh rSynthSample, [rInput]
+    ands  r0, rPackedVolumes, #0xff
+    muls  rSynthSample, r0
+
+    // sound effects
+    movs  rSfxSample, #0
+    cmp   rSfxPtr0, #0
+    ldrnesh r0, [rSfxPtr0, rSfxSampleIdx]
+    addne rSfxSample, r0
+    cmp   rSfxPtr1, #0
+    ldrnesh r0, [rSfxPtr1, rSfxSampleIdx]
+    addne rSfxSample, r0
+    cmp   rSfxPtr2, #0
+    ldrnesh r0, [rSfxPtr2, rSfxSampleIdx]
+    addne rSfxSample, r0
+    cmp   rSfxPtr3, #0
+    ldrnesh r0, [rSfxPtr3, rSfxSampleIdx]
+    addne rSfxSample, r0
+
+    // apply sfx volume
+    ands  r0, rPackedVolumes, #0xff00
+    lsrs  r0, #8
+    muls  rSfxSample, r0
+
+    // final sample
+    adds  rSynthSample, rSfxSample
+
     // apply master volume
-    muls  r6, r1
-    asrs  r6, #8
-    // clamp
-    adds  r6, #128
-    cmp   r6, #0
-    movlt r6, #0
-    cmp   r6, #255
-    movgt r6, #255
-    subs  r6, #128
+    ands  r0, rPackedVolumes, #0xff0000
+    lsrs  r0, #16
+    muls  rSynthSample, r0
+    asrs  r0, rSynthSample, #16
+
+    // clamp r0 between -128 and 127 (magic)
+    // rSfxSample and rSynthSample are just work registers that are available
+    mov   rSfxSample, #0x7f
+    mov   rSynthSample, r0, lsl #24    // clear any potential overflow bits
+    cmp   r0, rSynthSample, asr #24    // check if anything changed
+    eorne r0, rSfxSample, r0, asr #32  // set the clamp based on the sign of r0
+
     // write output
-    strb  r6, [r3]
-    // next
-    adds  r4, #2
-    adds  r3, #1
-    subs  r5, #1
+    strb  r0, [rOutput]
+
+    adds  rInput, #2
+    adds  rOutput, #1
+    adds  rSfxSampleIdx, #2
+    subs  rSampleLeft, #1
     bne   copy_next_sample
+
+    #undef rSfxPtr0
+    #undef rSfxPtr1
+    #undef rSfxPtr2
+    #undef rSfxPtr3
+    #undef rSfxSample
+    #undef rSfxSampleIdx
+    #undef rPackedVolumes
+    #undef rSynthSample
+    #undef rInput
+    #undef rOutput
+    #undef rSampleLeft
+    #undef rDidClear
+
+    //
+    // Advance sfx
+    //
+    ldr   r0, =g_snd + SND_SFX
+    movs  r4, #4
+advance_sfx:
+    ldr   r1, [r0, #SND_SFX_WAV_BASE]
+    cmp   r1, #0
+    beq   advance_sfx_continue
+    adds  r1, #608 * 2
+    ldr   r2, [r0, #SND_SFX_SAMPLES_LEFT]
+    subs  r2, #608
+    moveq r1, #0
+    str   r1, [r0, #SND_SFX_WAV_BASE]
+    str   r2, [r0, #SND_SFX_SAMPLES_LEFT]
+advance_sfx_continue:
+    adds  r0, #SIZEOF_SND_SFX_ST
+    subs  r4, #1
+    bne   advance_sfx
 
     //
     // Advance envelopes

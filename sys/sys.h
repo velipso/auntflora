@@ -8,6 +8,7 @@
 #pragma once
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 #include "gba/reg.h"
 
 typedef uint8_t  byte;
@@ -25,7 +26,7 @@ typedef int32_t  i32;
 #define BINFILE(n) \
   extern const u8 _binary_ ## n ## _start[]; \
   extern const u8 _binary_ ## n ## _size[]
-#define BINADDR(n)  ((void *)&_binary_ ## n ## _start)
+#define BINADDR(n)  ((const void *)&_binary_ ## n ## _start)
 #define BINSIZE(n)  ((u32)&_binary_ ## n ## _size)
 
 extern void gvmain();
@@ -65,9 +66,12 @@ void sys_set_screen_enable(i32 enable);
 void sys_set_screen_mode(i32 mode);
 void sys_set_vblank(void (*irq_vblank_handler)());
 void sys_nextframe();
-void snd_load_song(void *song_base, int sequence);
+void snd_load_song(const void *song_base, int sequence);
 void snd_set_master_volume(int v);
 void snd_set_song_volume(int v);
+void snd_set_sfx_volume(int v);
+int snd_find_wav(const char *name);
+bool snd_play_wav(int wav_index, int priority);
 
 #define RGB15(r, g, b)  (((r) & 0x1f) | (((g) & 0x1f) << 5) | (((b) & 0x1f) << 10))
 

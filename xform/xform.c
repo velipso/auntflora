@@ -51,6 +51,15 @@ static void print_usage() {
   );
 }
 
+// align files to 4 bytes... required to keep linker in alignment (???)
+static void fclose4(FILE *fp) {
+  long pos = ftell(fp);
+  int pad = 4 - (pos % 4);
+  for (int i = 0; i < pad; i++)
+    fputc(0, fp);
+  fclose(fp);
+}
+
 static int fix_rom(const char *file) {
   printf("Fixing: %s\n", file);
   FILE *fp = fopen(file, "r+b");
@@ -197,7 +206,7 @@ static int expand6x6to8x8(const char *input, const char *palette, const char *ou
     }
   }
 
-  fclose(fp);
+  fclose4(fp);
   stbi_image_free(data);
   free(pal);
   return 0;
@@ -246,7 +255,7 @@ static int copy8x8(const char *input, const char *palette, const char *output) {
     }
   }
 
-  fclose(fp);
+  fclose4(fp);
   stbi_image_free(data);
   free(pal);
   return 0;
@@ -471,7 +480,7 @@ int main(int argc, const char **argv) {
       return 1;
     }
     fwrite(palette, sizeof(palette), 1, fp);
-    fclose(fp);
+    fclose4(fp);
     return 0;
   } else if (strcmp(argv[1], "expand6x6to8x8") == 0) {
     if (argc != 5) {
@@ -498,9 +507,9 @@ int main(int argc, const char **argv) {
     FILE *logic = fopen(argv[4], "wb");
     FILE *sprite = fopen(argv[5], "wb");
     int res = process_world(jv, bg, logic, sprite);
-    fclose(sprite);
-    fclose(logic);
-    fclose(bg);
+    fclose4(sprite);
+    fclose4(logic);
+    fclose4(bg);
     json_free(jv);
     return res;
   } else if (strcmp(argv[1], "snd") == 0) {

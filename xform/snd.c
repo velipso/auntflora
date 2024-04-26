@@ -29,6 +29,15 @@
 #define MAX_RND_SAMPLE    (1 << 15)
 #define PI                3.14159265358979323846
 
+// align files to 4 bytes... required to keep linker in alignment (???)
+static void fclose4(FILE *fp) {
+  long pos = ftell(fp);
+  int pad = 4 - (pos % 4);
+  for (int i = 0; i < pad; i++)
+    fputc(0, fp);
+  fclose(fp);
+}
+
 static void snd_print_usage() {
   printf(
     "Usage:\n"
@@ -286,7 +295,7 @@ static int snd_tables_osc(const char *output) {
   fwrite(data, sizeof(uint16_t), arrlen(waves), fp);
   free(data);
   arrfree(waves);
-  fclose(fp);
+  fclose4(fp);
 
   return 0;
 }
@@ -309,7 +318,7 @@ static int snd_tables_tempo(const char *output) {
     tempo[i] = (uint16_t)start_value;
   }
   fwrite(tempo, sizeof(uint16_t), 64, fp);
-  fclose(fp);
+  fclose4(fp);
 
   return 0;
 }
@@ -440,7 +449,7 @@ static int snd_tables_slice(const char *output) {
     snd_tables_slice_push(fp, offsets, &next_offset);
   }
 
-  fclose(fp);
+  fclose4(fp);
 
   return 0;
 }
@@ -474,7 +483,7 @@ static int snd_tables_dphase(const char *output) {
     uint16_t d = (uint16_t)dphase;
     fwrite(&d, sizeof(uint16_t), 1, fp);
   }
-  fclose(fp);
+  fclose4(fp);
 
   return 0;
 }
@@ -509,7 +518,7 @@ static int snd_tables_bend(const char *output) {
       fwrite(&d, sizeof(uint16_t), 1, fp);
     }
   }
-  fclose(fp);
+  fclose4(fp);
 
   return 0;
 }
@@ -606,7 +615,7 @@ static int snd_wav(
     fprintf(stderr, "\nFailed to write to: %s\n", sizes_out);
     return 1;
   }
-  FILE *names_fp = fopen(names_out, "w");
+  FILE *names_fp = fopen(names_out, "wb");
   if (!names_fp) {
     fclose(sizes_fp);
     fclose(offsets_fp);
@@ -718,6 +727,7 @@ static int snd_wav(
 
     // output everything
     if (total_wavs < 0x1000) {
+      printf("%s:\n  next_offset %08X\n  size %08X\n", file.name, next_offset, size);
       fprintf(names_fp, "%.*s\n", flen - 4, file.name);
       fwrite(&next_offset, sizeof(uint32_t), 1, offsets_fp);
       fwrite(&size, sizeof(uint32_t), 1, sizes_fp);
@@ -740,6 +750,11 @@ invalid_wav_file:
 skip:;
   }
 
+  fclose4(waves_fp);
+  fclose4(offsets_fp);
+  fclose4(sizes_fp);
+  fclose4(names_fp);
+
   printf("Total wav files: %d\n", total_wavs);
   tinydir_close(&tdir);
   return 0;
@@ -759,6 +774,8 @@ static void print_offset(const char* name, size_t offset) {
   print_offset("SND_CHANNEL_" name, offsetof(struct snd_channel_st, field))
 #define print_syoff(name, field) \
   print_offset("SND_SYNTH_" name, offsetof(struct snd_synth_st, field))
+#define print_sfoff(name, field) \
+  print_offset("SND_SFX_" name, offsetof(struct snd_sfx_st, field))
 #define print_snoff(name, field) \
   print_offset("SND_" name, offsetof(struct snd_st, field))
 
@@ -774,6 +791,7 @@ static int snd_makesong(const char *input, const char *names_file, const char *o
   }
   song_serialize(song, (song_serialize_write)fwrite, fp);
   song_free(song);
+  fclose4(fp);
   return 0;
 }
 
@@ -866,7 +884,12 @@ int snd_main(int argc, const char **argv) {
     print_syoff("VOLUME"                 , volume                        );
     print_syoff("CHANNEL"                , channel                       );
     print_offset("SIZEOF_SND_SYNTH_ST"   , sizeof(struct snd_synth_st)   );
+    print_sfoff("WAV_BASE"               , wav_base                      );
+    print_sfoff("SAMPLES_LEFT"           , samples_left                  );
+    print_sfoff("PRIORITY"               , priority                      );
+    print_offset("SIZEOF_SND_SFX_ST"     , sizeof(struct snd_sfx_st)     );
     print_snoff("SYNTH"                  , synth                         );
+    print_snoff("SFX"                    , sfx                           );
     print_snoff("BUFFER_ADDR"            , buffer_addr                   );
     print_snoff("NEXT_BUFFER_INDEX"      , next_buffer_index             );
     print_snoff("BUFFER1"                , buffer1                       );
@@ -874,6 +897,7 @@ int snd_main(int argc, const char **argv) {
     print_snoff("BUFFER3"                , buffer3                       );
     print_snoff("BUFFER_TEMP"            , buffer_temp                   );
     print_snoff("MASTER_VOLUME"          , master_volume                 );
+    print_snoff("SFX_VOLUME"             , sfx_volume                    );
     print_offset("SIZEOF_SND_ST"         , sizeof(struct snd_st)         );
     return 0;
   } else {

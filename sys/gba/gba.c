@@ -25,6 +25,10 @@ static void _sys_set_screen_mode();
 static void _sys_snd_init();
 
 BINFILE(snd_tempo_bin);
+BINFILE(snd_wavs_bin);
+BINFILE(snd_offsets_bin);
+BINFILE(snd_sizes_bin);
+BINFILE(snd_names_txt);
 
 void sys_init() {
   sys__irq_init();
@@ -219,8 +223,7 @@ static void _sys_snd_init() {
   REG_TM1CNT = 0x00c1;
 }
 
-void debug_print_number(u32 num);
-void snd_load_song(void *song_base, int sequence) {
+void snd_load_song(const void *song_base, int sequence) {
   int volume = g_snd.synth.volume;
   memset32(&g_snd.synth, 0, sizeof(struct snd_synth_st));
   g_snd.synth.volume = volume;
@@ -240,8 +243,8 @@ void snd_load_song(void *song_base, int sequence) {
   g_snd.synth.tick_left = 0;
 
   // initialize channel volume
-  for (int i = 0; i < song->channel_count; i++)
-    g_snd.synth.channel[i].chan_volume = 8;
+  for (int i = 0; i < SND_MAX_CHANNELS; i++)
+    g_snd.synth.channel[i].chan_volume = i < song->channel_count ? 8 : 0;
 }
 
 void snd_set_master_volume(int v) {
@@ -250,4 +253,70 @@ void snd_set_master_volume(int v) {
 
 void snd_set_song_volume(int v) {
   g_snd.synth.volume = v < 0 ? 0 : v > 16 ? 16 : v;
+}
+
+void snd_set_sfx_volume(int v) {
+  g_snd.sfx_volume = v < 0 ? 0 : v > 16 ? 16 : v;
+}
+
+int snd_find_wav(const char *name) {
+  const char *start = BINADDR(snd_names_txt);
+  int size = BINSIZE(snd_names_txt);
+  int state = 0;
+  int index = 0;
+  int m = 0;
+  int matching = 0;
+  for (int i = 0; i < size; i++) {
+    char ch = start[i];
+    if (ch == 0)
+      return -1;
+    switch (state) {
+      case 0:
+        if (ch != '\n') {
+          matching = ch == name[0];
+          m = 1;
+          state = 1;
+        }
+        break;
+      case 1:
+        if (ch == '\n') {
+          if (matching && name[m] == 0)
+            return index;
+          index++;
+          state = 0;
+        } else if (matching) {
+          matching = ch == name[m++];
+        }
+        break;
+    }
+  }
+  return -1;
+}
+
+bool snd_play_wav(int wav_index, int priority) {
+  if (wav_index < 0)
+    return false;
+  // look for either an empty slot or the lowest priority slot
+  int slot;
+  int best_slot = 0;
+  int best_priority = g_snd.sfx[0].priority;
+  for (slot = 0; slot < SND_MAX_SFX; slot++) {
+    if (!g_snd.sfx[slot].wav_base)
+      goto place_in_slot;
+    if (g_snd.sfx[slot].priority < best_priority) {
+      best_priority = g_snd.sfx[slot].priority;
+      best_slot = slot;
+    }
+  }
+  if (priority <= best_priority)
+    return false;
+  slot = best_slot;
+place_in_slot:
+  const u8 *wavs = BINADDR(snd_wavs_bin);
+  const u32 *offsets = BINADDR(snd_offsets_bin);
+  const u32 *sizes = BINADDR(snd_sizes_bin);
+  g_snd.sfx[slot].wav_base = &wavs[offsets[wav_index]];
+  g_snd.sfx[slot].samples_left = sizes[wav_index];
+  g_snd.sfx[slot].priority = priority;
+  return true;
 }

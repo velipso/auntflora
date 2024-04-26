@@ -580,7 +580,8 @@ struct song_st *song_new(const char *input, const char *names_file) {
             (ch >= 'A' && ch <= 'Z') ||
             ch == '_' ||
             ch == '-' ||
-            ch == ':'
+            ch == ':' ||
+            ch == '#'
           ) {
             if (ident_i < 7)
               ident[ident_i++] = ch;

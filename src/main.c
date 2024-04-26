@@ -230,7 +230,7 @@ void gvmain() {
   snap_player();
 
   snd_set_master_volume(16);
-  snd_set_song_volume(0);
+  snd_set_song_volume(8);
   snd_set_sfx_volume(16);
   snd_load_song(BINADDR(song1_gvsong), 0);
 

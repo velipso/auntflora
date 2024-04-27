@@ -26,12 +26,18 @@ extern struct markers_st {
   int y;
 } g_markers[3];
 extern int g_playerdir;
-extern int g_maskworld;
+extern int g_options;
+
+#define OPT_TILESET_MASK  3
+#define OPT_HIDE_BORDERS  4
+#define OPT_SNAP_SCROLL   8
 
 BINFILE(palette_bin);
 BINFILE(font_hd_bin);
 BINFILE(tiles_hd_bin);
+BINFILE(tiles_sd_bin);
 BINFILE(sprites_hd_bin);
+BINFILE(sprites_sd_bin);
 BINFILE(worldbg_bin);
 BINFILE(worldlogic_bin);
 BINFILE(markers_bin);

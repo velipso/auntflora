@@ -43,6 +43,9 @@ static void print_usage() {
     "  expand6x6to8x8 <input.png> <palette.bin> <output.bin>\n"
     "    Outputs 8x8 tiles from 6x6 source image\n"
     "\n"
+    "  expand5x5to8x8 <input.png> <palette.bin> <output.bin>\n"
+    "    Outputs 8x8 tiles from 5x5 source image\n"
+    "\n"
     "  copy8x8 <input.png> <palette.bin> <output.bin>\n"
     "    Outputs 8x8 tiles from 8x8 source image\n"
     "\n"
@@ -142,6 +145,27 @@ static void single6x6to8x8(u8 *dst, const u8 *src, int srcbytes) {
   }
 }
 
+static void single5x5to8x8(u8 *dst, const u8 *src, int srcbytes) {
+  const int map[] = {
+     0, 1, 1, 2, 3, 3, 4, 4,
+     5, 6, 6, 7, 8, 8, 9, 9,
+     5, 6, 6, 7, 8, 8, 9, 9,
+    10,11,11,12,13,13,14,14,
+    15,16,16,17,18,18,19,19,
+    15,16,16,17,18,18,19,19,
+    20,21,21,22,23,23,24,24,
+    20,21,21,22,23,23,24,24,
+  };
+  int tiles = srcbytes / 25;
+  for (int t = 0; t < tiles; t++) {
+    for (int i = 0; i < 64; i++) {
+      dst[i] = src[map[i]];
+    }
+    src += 25;
+    dst += 64;
+  }
+}
+
 static int findpal(u32 color, const u16 *palette, int maxpal) {
   int r = (color >> 0) & 0xff;
   int g = (color >> 8) & 0xff;
@@ -200,6 +224,59 @@ static int expand6x6to8x8(const char *input, const char *palette, const char *ou
       // expand
       u8 dst[64];
       single6x6to8x8(dst, src, sizeof(src));
+
+      // write results
+      fwrite(dst, sizeof(dst), 1, fp);
+    }
+  }
+
+  fclose4(fp);
+  stbi_image_free(data);
+  free(pal);
+  return 0;
+}
+
+static int expand5x5to8x8(const char *input, const char *palette, const char *output) {
+  int maxpal;
+  u16 *pal = readpal(palette, &maxpal);
+  FILE *fp = fopen(input, "rb");
+  if (fp == NULL) {
+    fprintf(stderr, "\nFailed to read: %s\n", input);
+    return 1;
+  }
+  int width, height;
+  u32 *data = (u32 *)stbi_load_from_file(fp, &width, &height, NULL, 4);
+  fclose(fp);
+
+  fp = fopen(output, "wb");
+  if (fp == NULL) {
+    fprintf(stderr, "\nFailed to write: %s\n", output);
+    return 1;
+  }
+
+  int tcx = width / 5;
+  int tcy = height / 5;
+  for (int ty = 0; ty < tcy; ty++) {
+    for (int tx = 0; tx < tcx; tx++) {
+      u8 src[25] = {0};
+
+      // load 6x6 tile into src
+      for (int py = 0; py < 5; py++) {
+        int y = ty * 5 + py;
+        for (int px = 0; px < 5; px++) {
+          int x = tx * 5 + px;
+          int k = x + y * width;
+          int c = findpal(data[k], pal, maxpal);
+          if (c < 0) {
+            fprintf(stderr, "\nCannot find color at (%d, %d) in %s\n", x, y, input);
+          }
+          src[px + py * 5] = c;
+        }
+      }
+
+      // expand
+      u8 dst[64];
+      single5x5to8x8(dst, src, sizeof(src));
 
       // write results
       fwrite(dst, sizeof(dst), 1, fp);
@@ -489,6 +566,13 @@ int main(int argc, const char **argv) {
       return 1;
     }
     return expand6x6to8x8(argv[2], argv[3], argv[4]);
+  } else if (strcmp(argv[1], "expand5x5to8x8") == 0) {
+    if (argc != 5) {
+      print_usage();
+      fprintf(stderr, "\nExpecting expand5x5to8x8 <input.png> <palette.bin> <output.bin>\n");
+      return 1;
+    }
+    return expand5x5to8x8(argv[2], argv[3], argv[4]);
   } else if (strcmp(argv[1], "copy8x8") == 0) {
     if (argc != 5) {
       print_usage();

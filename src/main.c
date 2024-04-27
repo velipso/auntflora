@@ -23,9 +23,22 @@ struct viewport_st g_viewport = {0};
 struct world_st g_world = {0};
 struct markers_st g_markers[3] = {0};
 int g_playerdir = 3;
-int g_maskworld = 0;
+int g_options = 0;
+static int g_load_palette = 0;
+static const u8 zero[64] = {0};
 
 static void SECTION_IWRAM_ARM irq_vblank_6x6() {
+  if (g_load_palette == 1) { // load black
+    for (int i = 0; i < 8; i++) {
+      sys_copy_bgpal(32 * i, zero, sizeof(zero));
+      sys_copy_spritepal(32 * i, zero, sizeof(zero));
+    }
+    g_load_palette = 0;
+  } else if (g_load_palette == 2) { // load colors
+    sys_copy_bgpal(0, BINADDR(palette_bin), BINSIZE(palette_bin));
+    sys_copy_spritepal(0, BINADDR(palette_bin), BINSIZE(palette_bin));
+    g_load_palette = 0;
+  }
   sys_copy_map(28, 0, g_map0, 64 * 64);
   sys_copy_map(30, 0, g_map1, 64 * 64);
   sys_copy_oam(g_oam);
@@ -52,6 +65,71 @@ static void settile0(u32 x, u32 y, u32 t) {
   }
 }
 
+static inline bool opt_hide_borders() {
+  return (g_options & OPT_HIDE_BORDERS) != 0;
+}
+
+static inline bool opt_snap_scroll() {
+  return (g_options & OPT_SNAP_SCROLL) != 0;
+}
+
+static inline bool opt_standard_def() {
+  return (g_options & OPT_TILESET_MASK) >= 2;
+}
+
+static void snap_player();
+static void set_options(int opt) {
+  g_load_palette = 1; // load black
+  nextframe();
+
+  g_options = opt;
+  sys_set_screen_mode(
+    opt_standard_def()
+      ? SYS_SCREEN_MODE_2S5X5
+      : SYS_SCREEN_MODE_2S6X6
+  );
+  sys_set_bg_config(
+    2, // background #
+    0, // priority
+    0, // tile start
+    0, // mosaic
+    1, // 256 colors
+    28, // map start
+    0, // wrap
+    SYS_BGS_SIZE_512X512
+  );
+  sys_set_bg_config(
+    3, // background #
+    0, // priority
+    0, // tile start
+    0, // mosaic
+    1, // 256 colors
+    30, // map start
+    0, // wrap
+    SYS_BGS_SIZE_512X512
+  );
+  if (opt_standard_def()) {
+    sys_copy_tiles(0, 0, BINADDR(tiles_sd_bin), BINSIZE(tiles_sd_bin));
+    sys_copy_tiles(4, 0, BINADDR(sprites_sd_bin), BINSIZE(sprites_sd_bin));
+    sys_set_bgs2_scroll(0x019a * 5, 0x019a * 0);
+    sys_set_bgs3_scroll(0x019a * 5, 0x019a * 0);
+  } else {
+    sys_copy_tiles(0, 0, BINADDR(tiles_hd_bin), BINSIZE(tiles_hd_bin));
+    sys_copy_tiles(4, 0, BINADDR(sprites_hd_bin), BINSIZE(sprites_hd_bin));
+    sys_set_bgs2_scroll(0x0156 * 30 - 12, 0x0156 * 16);
+    sys_set_bgs3_scroll(0x0156 * 30 - 12, 0x0156 * 16);
+  }
+  // ensure that tile 0 is fully transparent
+  sys_copy_tiles(0, 0, zero, sizeof(zero));
+
+  // redraw everything
+  snap_player();
+  copy_world_offset();
+
+  g_load_palette = 2; // load colors
+  nextframe();
+}
+
 void set_player_ani_dir(int dir) {
   g_playerdir = dir;
   switch (dir) {
@@ -76,12 +154,21 @@ static struct viewport_st find_player_level() {
 }
 
 static void snap_player() {
-  g_sprites[0].origin.x = (g_markers[0].x - g_viewport.wx) * 12 - 32;
-  g_sprites[0].origin.y = (g_markers[0].y - g_viewport.wy) * 12 - 18;
-  g_sprites[1].origin.x = (g_markers[1].x - g_viewport.wx) * 12 - 32;
-  g_sprites[1].origin.y = (g_markers[1].y - g_viewport.wy) * 12 - 18;
-  g_sprites[2].origin.x = (g_markers[2].x - g_viewport.wx) * 12 - 32;
-  g_sprites[2].origin.y = (g_markers[2].y - g_viewport.wy) * 12 - 18;
+  if (opt_standard_def()) {
+    g_sprites[0].origin.x = (g_markers[0].x - g_viewport.wx) * 10 - 8;
+    g_sprites[0].origin.y = (g_markers[0].y - g_viewport.wy) * 10 - 3;
+    g_sprites[1].origin.x = (g_markers[1].x - g_viewport.wx) * 10 - 8;
+    g_sprites[1].origin.y = (g_markers[1].y - g_viewport.wy) * 10 - 3;
+    g_sprites[2].origin.x = (g_markers[2].x - g_viewport.wx) * 10 - 8;
+    g_sprites[2].origin.y = (g_markers[2].y - g_viewport.wy) * 10 - 3;
+  } else {
+    g_sprites[0].origin.x = (g_markers[0].x - g_viewport.wx) * 12 - 32;
+    g_sprites[0].origin.y = (g_markers[0].y - g_viewport.wy) * 12 - 18;
+    g_sprites[1].origin.x = (g_markers[1].x - g_viewport.wx) * 12 - 32;
+    g_sprites[1].origin.y = (g_markers[1].y - g_viewport.wy) * 12 - 18;
+    g_sprites[2].origin.x = (g_markers[2].x - g_viewport.wx) * 12 - 32;
+    g_sprites[2].origin.y = (g_markers[2].y - g_viewport.wy) * 12 - 18;
+  }
 }
 
 void copy_world_offset() {
@@ -93,24 +180,24 @@ void copy_world_offset() {
       if (sx >= 0 && sx < g_world.width && sy >= 0 && sy < g_world.height) {
         ww = world_at(sx, sy);
       }
-      if (g_maskworld && (x < 4 || x >= 21 || y < 2 || y >= 14))
+      if (opt_hide_borders() && (x < 4 || x >= 21 || y < 2 || y >= 14))
         ww = 0;
       settile0(x, y, ww & 0xff);
     }
   }
 
   const u8 *bg = BINADDR(worldbg_bin);
-  for (int y = 1; y < 30; y++) {
+  for (int y = 0; y < 32; y++) {
     memcpy8(
       &g_map1[y * 64],
       &bg[g_viewport.wx * 2 + (g_viewport.wy * 2 + y) * g_world.width * 2],
-      45
+      49
     );
   }
-  if (g_maskworld) {
+  if (opt_hide_borders()) {
     // clear border
-    for (int y = 1; y < 4; y++) {
-      memset8(&g_map1[y * 64], 0, 45);
+    for (int y = 0; y < 4; y++) {
+      memset8(&g_map1[y * 64], 0, 49);
     }
     for (int y = 4; y < 28; y++) {
       for (int i = 0; i < 8; i++) {
@@ -118,8 +205,8 @@ void copy_world_offset() {
         g_map1[y * 64 + 42 + i] = 0;
       }
     }
-    for (int y = 28; y < 30; y++) {
-      memset8(&g_map1[y * 64], 0, 45);
+    for (int y = 28; y < 32; y++) {
+      memset8(&g_map1[y * 64], 0, 49);
     }
   }
 }
@@ -164,7 +251,7 @@ void move_screen_to_player() {
   int vdx = vp2.wx > g_viewport.wx ? 1 : vp2.wx < g_viewport.wx ? -1 : 0;
   int vdy = vp2.wy > g_viewport.wy ? 1 : vp2.wy < g_viewport.wy ? -1 : 0;
   if (vdx != 0 || vdy != 0) {
-    if (g_maskworld) {
+    if (opt_snap_scroll()) {
       // snap to new location
       g_viewport = vp2;
     } else {
@@ -184,41 +271,7 @@ void move_screen_to_player() {
 void gvmain() {
   sys_init();
   sys_set_vblank(irq_vblank_6x6);
-  sys_set_screen_mode(SYS_SCREEN_MODE_2S6X6);
-  sys_set_bg_config(
-    2, // background #
-    0, // priority
-    0, // tile start
-    0, // mosaic
-    1, // 256 colors
-    28, // map start
-    0, // wrap
-    SYS_BGS_SIZE_512X512
-  );
-  sys_set_bg_config(
-    3, // background #
-    0, // priority
-    0, // tile start
-    0, // mosaic
-    1, // 256 colors
-    30, // map start
-    0, // wrap
-    SYS_BGS_SIZE_512X512
-  );
-  sys_copy_bgpal(0, BINADDR(palette_bin), BINSIZE(palette_bin));
-  sys_copy_spritepal(0, BINADDR(palette_bin), BINSIZE(palette_bin));
-  sys_copy_tiles(0, 0, BINADDR(tiles_hd_bin), BINSIZE(tiles_hd_bin));
-  sys_copy_tiles(4, 0, BINADDR(sprites_hd_bin), BINSIZE(sprites_hd_bin));
   sys_copy_tiles(1, 0, BINADDR(font_hd_bin), BINSIZE(font_hd_bin));
-
-  // ensure that tile 0 is fully transparent
-  const u8 zero[64] = {0};
-  sys_copy_tiles(0, 0, zero, sizeof(zero));
-
-  sys_set_bgs2_scroll(0x0156 * 30 - 12, 0x0156 * 16);
-  sys_set_bgs3_scroll(0x0156 * 30 - 12, 0x0156 * 16);
-  sys_nextframe();
-  sys_set_screen_enable(1);
 
   load_world();
 
@@ -227,10 +280,12 @@ void gvmain() {
   g_sprites[2].pc = ani_cat;
 
   g_viewport = find_player_level();
-  snap_player();
+  set_options(0);
+  sys_nextframe();
+  sys_set_screen_enable(1);
 
   snd_set_master_volume(16);
-  snd_set_song_volume(8);
+  snd_set_song_volume(0);
   snd_set_sfx_volume(16);
   snd_load_song(BINADDR(song1_gvsong), 0);
 
@@ -245,7 +300,7 @@ void gvmain() {
     } else {
       int dir = -1;
       g_dirty = 0;
-      if (g_inputhit & SYS_INPUT_SE) g_maskworld = 1 - g_maskworld;
+      if (g_inputhit & SYS_INPUT_SE) set_options(g_options + 2);
       if (g_inputhit & SYS_INPUT_U){ dir = 0; }
       if (g_inputhit & SYS_INPUT_R){ dir = 1; }
       if (g_inputhit & SYS_INPUT_D){ dir = 2; }

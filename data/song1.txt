@@ -14,7 +14,9 @@
 # 5. test instrument 0 'OFF' (broken)
 # 6. document
 # 7. save/restore synth state
-# 8. force END on last row..?
+# 8. force END on last row..? embed END in wait?
+# 9. pattern extension compile-time feature..?
+#10. square volumes so lower volumes are more representative?
 #
 
 new instrument BAS

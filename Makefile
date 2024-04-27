@@ -68,7 +68,9 @@ OBJS := \
 	$(TGT_DATA)/palette.o \
 	$(TGT_DATA)/font_hd.o \
 	$(TGT_DATA)/tiles_hd.o \
+	$(TGT_DATA)/tiles_sd.o \
 	$(TGT_DATA)/sprites_hd.o \
+	$(TGT_DATA)/sprites_sd.o \
 	$(TGT_DATA)/worldbg.o \
 	$(TGT_DATA)/worldlogic.o \
 	$(TGT_DATA)/markers.o \
@@ -116,10 +118,17 @@ $(TGT)/%.c.o: %.c
 
 all: $(ROM)
 
-$(TGT_DATA)/palette.bin: $(DATA)/font_hd.png $(DATA)/tiles_hd.png $(DATA)/sprites_hd.png $(XFORM)
+$(TGT_DATA)/palette.bin: \
+	$(DATA)/font_hd.png \
+	$(DATA)/tiles_sd.png \
+	$(DATA)/tiles_hd.png \
+	$(DATA)/sprites_hd.png \
+	$(DATA)/sprites_sd.png \
+	$(XFORM)
 	$(MKDIR) -p $(@D)
 	$(XFORM) palette256 $(TGT_DATA)/palette.bin \
-		$(DATA)/font_hd.png $(DATA)/tiles_hd.png $(DATA)/sprites_hd.png
+		$(DATA)/font_hd.png $(DATA)/tiles_hd.png $(DATA)/tiles_sd.png \
+		$(DATA)/sprites_hd.png $(DATA)/sprites_sd.png
 
 $(TGT_DATA)/palette.o: $(TGT_DATA)/palette.bin
 	cd $(TGT_DATA) && $(call objbinary,palette.bin,palette.o)
@@ -134,10 +143,20 @@ $(TGT_DATA)/tiles_hd.o: $(DATA)/tiles_hd.png $(TGT_DATA)/palette.bin $(XFORM)
 	$(XFORM) expand6x6to8x8 $(DATA)/tiles_hd.png $(TGT_DATA)/palette.bin $(TGT_DATA)/tiles_hd.bin
 	cd $(TGT_DATA) && $(call objbinary,tiles_hd.bin,tiles_hd.o)
 
+$(TGT_DATA)/tiles_sd.o: $(DATA)/tiles_sd.png $(TGT_DATA)/palette.bin $(XFORM)
+	$(MKDIR) -p $(@D)
+	$(XFORM) expand5x5to8x8 $(DATA)/tiles_sd.png $(TGT_DATA)/palette.bin $(TGT_DATA)/tiles_sd.bin
+	cd $(TGT_DATA) && $(call objbinary,tiles_sd.bin,tiles_sd.o)
+
 $(TGT_DATA)/sprites_hd.o: $(DATA)/sprites_hd.png $(TGT_DATA)/palette.bin $(XFORM)
 	$(MKDIR) -p $(@D)
 	$(XFORM) copy8x8 $(DATA)/sprites_hd.png $(TGT_DATA)/palette.bin $(TGT_DATA)/sprites_hd.bin
 	cd $(TGT_DATA) && $(call objbinary,sprites_hd.bin,sprites_hd.o)
+
+$(TGT_DATA)/sprites_sd.o: $(DATA)/sprites_sd.png $(TGT_DATA)/palette.bin $(XFORM)
+	$(MKDIR) -p $(@D)
+	$(XFORM) copy8x8 $(DATA)/sprites_sd.png $(TGT_DATA)/palette.bin $(TGT_DATA)/sprites_sd.bin
+	cd $(TGT_DATA) && $(call objbinary,sprites_sd.bin,sprites_sd.o)
 
 $(TGT_DATA)/worldbg.o \
 $(TGT_DATA)/worldlogic.o \

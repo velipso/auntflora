@@ -33,6 +33,8 @@ extern int g_options;
 #define OPT_SNAP_SCROLL   8
 
 BINFILE(palette_bin);
+BINFILE(title_palette_bin);
+BINFILE(title_bin);
 BINFILE(font_hd_bin);
 BINFILE(tiles_hd_bin);
 BINFILE(tiles_sd_bin);

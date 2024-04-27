@@ -46,8 +46,12 @@ static void print_usage() {
     "  expand5x5to8x8 <input.png> <palette.bin> <output.bin>\n"
     "    Outputs 8x8 tiles from 5x5 source image\n"
     "\n"
+    "  copy256 <input.png> <palette.bin> <output.bin>\n"
+    "    Outputs image directly with 1 byte per pixel\n"
+    "\n"
     "  copy8x8 <input.png> <palette.bin> <output.bin>\n"
     "    Outputs 8x8 tiles from 8x8 source image\n"
+    "\n"
     "\n"
     "  world <input.json> <bg.bin> <logic.bin> <sprite.bin>\n"
     "    Process Tiled world data\n"
@@ -289,6 +293,45 @@ static int expand5x5to8x8(const char *input, const char *palette, const char *ou
   return 0;
 }
 
+static int copy256(const char *input, const char *palette, const char *output) {
+  int maxpal;
+  u16 *pal = readpal(palette, &maxpal);
+  FILE *fp = fopen(input, "rb");
+  if (fp == NULL) {
+    fprintf(stderr, "\nFailed to read: %s\n", input);
+    return 1;
+  }
+  int width, height;
+  u32 *data = (u32 *)stbi_load_from_file(fp, &width, &height, NULL, 4);
+  fclose(fp);
+
+  fp = fopen(output, "wb");
+  if (fp == NULL) {
+    fprintf(stderr, "\nFailed to write: %s\n", output);
+    return 1;
+  }
+
+  u8 *dst = malloc(sizeof(u8) * width * height);
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      int k = x + y * width;
+      int c = findpal(data[k], pal, maxpal);
+      if (c < 0) {
+        fprintf(stderr, "\nWARNING: Cannot find color at (%d, %d) in %s\n", x, y, input);
+        c = 0;
+      }
+      dst[k] = c;
+    }
+  }
+  fwrite(dst, sizeof(u8), width * height, fp);
+  free(dst);
+
+  fclose4(fp);
+  stbi_image_free(data);
+  free(pal);
+  return 0;
+}
+
 static int copy8x8(const char *input, const char *palette, const char *output) {
   int maxpal;
   u16 *pal = readpal(palette, &maxpal);
@@ -321,7 +364,8 @@ static int copy8x8(const char *input, const char *palette, const char *output) {
           int k = x + y * width;
           int c = findpal(data[k], pal, maxpal);
           if (c < 0) {
-            fprintf(stderr, "\nCannot find color at (%d, %d) in %s\n", x, y, input);
+            fprintf(stderr, "\nWARNING: Cannot find color at (%d, %d) in %s\n", x, y, input);
+            c = 0;
           }
           src[px + py * 8] = c;
         }
@@ -573,6 +617,13 @@ int main(int argc, const char **argv) {
       return 1;
     }
     return expand5x5to8x8(argv[2], argv[3], argv[4]);
+  } else if (strcmp(argv[1], "copy256") == 0) {
+    if (argc != 5) {
+      print_usage();
+      fprintf(stderr, "\nExpecting copy256 <input.png> <palette.bin> <output.bin>\n");
+      return 1;
+    }
+    return copy256(argv[2], argv[3], argv[4]);
   } else if (strcmp(argv[1], "copy8x8") == 0) {
     if (argc != 5) {
       print_usage();

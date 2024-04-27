@@ -66,6 +66,8 @@ OBJS := \
 	$(patsubst %.s,$(TGT)/%.s.o,$(SOURCES_S)) \
 	$(patsubst %.c,$(TGT)/%.c.o,$(SOURCES_C)) \
 	$(TGT_DATA)/palette.o \
+	$(TGT_DATA)/title.o \
+	$(TGT_DATA)/title_palette.o \
 	$(TGT_DATA)/font_hd.o \
 	$(TGT_DATA)/tiles_hd.o \
 	$(TGT_DATA)/tiles_sd.o \
@@ -132,6 +134,18 @@ $(TGT_DATA)/palette.bin: \
 
 $(TGT_DATA)/palette.o: $(TGT_DATA)/palette.bin
 	cd $(TGT_DATA) && $(call objbinary,palette.bin,palette.o)
+
+$(TGT_DATA)/title_palette.bin: $(DATA)/title.png $(XFORM)
+	$(MKDIR) -p $(@D)
+	$(XFORM) palette256 $(TGT_DATA)/title_palette.bin $(DATA)/title.png
+
+$(TGT_DATA)/title_palette.o: $(TGT_DATA)/title_palette.bin
+	cd $(TGT_DATA) && $(call objbinary,title_palette.bin,title_palette.o)
+
+$(TGT_DATA)/title.o: $(DATA)/title.png $(TGT_DATA)/title_palette.bin $(XFORM)
+	$(MKDIR) -p $(@D)
+	$(XFORM) copy256 $(DATA)/title.png $(TGT_DATA)/title_palette.bin $(TGT_DATA)/title.bin
+	cd $(TGT_DATA) && $(call objbinary,title.bin,title.o)
 
 $(TGT_DATA)/font_hd.o: $(DATA)/font_hd.png $(TGT_DATA)/palette.bin $(XFORM)
 	$(MKDIR) -p $(@D)

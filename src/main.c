@@ -27,7 +27,13 @@ int g_options = 0;
 static int g_load_palette = 0;
 static const u8 zero[64] = {0};
 
-static void SECTION_IWRAM_ARM irq_vblank_6x6() {
+static void SECTION_IWRAM_ARM irq_vblank_title() {
+  int inp = sys_input() ^ 0x3ff;
+  g_inputhit = ~g_inputdown & inp;
+  g_inputdown = inp;
+}
+
+static void SECTION_IWRAM_ARM irq_vblank_game() {
   if (g_load_palette == 1) { // load black
     for (int i = 0; i < 8; i++) {
       sys_copy_bgpal(32 * i, zero, sizeof(zero));
@@ -42,7 +48,7 @@ static void SECTION_IWRAM_ARM irq_vblank_6x6() {
   sys_copy_map(28, 0, g_map0, 64 * 64);
   sys_copy_map(30, 0, g_map1, 64 * 64);
   sys_copy_oam(g_oam);
-  int inp = ~sys_input();
+  int inp = sys_input() ^ 0x3ff;
   g_inputhit = ~g_inputdown & inp;
   g_inputdown = inp;
 }
@@ -268,9 +274,34 @@ void move_screen_to_player() {
   snap_player();
 }
 
-void gvmain() {
-  sys_init();
-  sys_set_vblank(irq_vblank_6x6);
+static void title_screen() {
+  sys_set_vblank(irq_vblank_title);
+  sys_nextframe();
+
+  sys_set_screen_mode(SYS_SCREEN_MODE_2I);
+  sys_copy_tiles(0, 0, BINADDR(title_bin), BINSIZE(title_bin));
+  sys_copy_bgpal(0, BINADDR(title_palette_bin), BINSIZE(title_palette_bin));
+  sys_set_screen_enable(1);
+
+  snd_set_master_volume(16);
+  snd_set_song_volume(12);
+  snd_set_sfx_volume(16);
+  snd_load_song(BINADDR(song1_gvsong), 1);
+
+  // wait for keypress
+  while (g_inputdown) sys_nextframe();
+  while (!g_inputdown) sys_nextframe();
+  while (g_inputdown) sys_nextframe();
+
+  // fade out music
+  for (int i = 16; i >= 0; i--) {
+    snd_set_master_volume(i);
+    sys_nextframe();
+  }
+}
+
+static void play_game() {
+  sys_set_vblank(irq_vblank_game);
   sys_copy_tiles(1, 0, BINADDR(font_hd_bin), BINSIZE(font_hd_bin));
 
   load_world();
@@ -285,7 +316,7 @@ void gvmain() {
   sys_set_screen_enable(1);
 
   snd_set_master_volume(16);
-  snd_set_song_volume(0);
+  snd_set_song_volume(12);
   snd_set_sfx_volume(16);
   snd_load_song(BINADDR(song1_gvsong), 0);
 
@@ -372,4 +403,10 @@ void gvmain() {
 
     copy_world_offset();
   }
+}
+
+void gvmain() {
+  sys_init();
+  title_screen();
+  play_game();
 }

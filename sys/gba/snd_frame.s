@@ -161,6 +161,8 @@ render_channel:
     ldrh  rDPhase, [rDPhase, ip]
 
     ldrh  r0, [rInstPtr, #SND_SONGINST_WAVE]
+    lsls  r0, #17
+    lsrs  r0, #17
     cmp   r0, #0
     beq   render_rnd_inst
     subs  r0, #1
@@ -597,9 +599,6 @@ check_pcm_size:
     b     env_channel_continue
 
 released:
-    ldr   r1, [rChannelPtr, #SND_CHANNEL_INST_BASE]
-    cmp   r1, #1
-    beq   mute_note
     // advance volume envelope until it runs off
     ldr   r0, [rChannelPtr, #SND_CHANNEL_ENV_VOLUME_INDEX]
     adds  r0, #1
@@ -632,11 +631,15 @@ env_channel_continue:
     cmp   r2, #7
     beq   note_stop1
     movs  r0, #2
+    ldr   r1, [rChannelPtr, #SND_CHANNEL_STATE]
     str   r0, [rChannelPtr, #SND_CHANNEL_STATE]
-    // TODO: maybe some instruments shouldn't reset phase?
-    // ex: saw, tri, sin, pcm => reset   sqX, rnd => no reset
-    movs  r0, #0
-    str   r0, [rChannelPtr, #SND_CHANNEL_PHASE]
+    ldr   r0, [rChannelPtr, #SND_CHANNEL_INST_BASE]
+    ldrh  r0, [r0, #SND_SONGINST_WAVE]
+    ands  r0, #0x8000
+    cmpne r1, #0
+    mov   r0, #0
+    // phase continues if wave has continue flag AND note was already on
+    streq r0, [rChannelPtr, #SND_CHANNEL_PHASE]
     str   r0, [rChannelPtr, #SND_CHANNEL_ENV_VOLUME_INDEX]
     str   r0, [rChannelPtr, #SND_CHANNEL_ENV_PITCH_INDEX]
     lsls  r0, r2, #pitchDivisionBits
@@ -1024,12 +1027,17 @@ done_effect:
     bne   delayed_note_on
     cmp   rNote, #7
     beq   note_stop2
+    ldr   r5, [rChannelPtr, #SND_CHANNEL_STATE]
     movs  r4, #2
     str   r4, [rChannelPtr, #SND_CHANNEL_STATE]
-    // TODO: maybe some instruments shouldn't reset phase?
-    // ex: saw, tri, sin, pcm => reset   sqX, rnd => no reset
-    movs  r4, #0
-    str   r4, [rChannelPtr, #SND_CHANNEL_PHASE]
+
+    ldr   r4, [rChannelPtr, #SND_CHANNEL_INST_BASE]
+    ldrh  r4, [r4, #SND_SONGINST_WAVE]
+    ands  r4, #0x8000
+    cmpne r5, #0
+    mov   r4, #0
+    // phase continues if wave has continue flag AND note was already on
+    streq r4, [rChannelPtr, #SND_CHANNEL_PHASE]
     str   r4, [rChannelPtr, #SND_CHANNEL_ENV_VOLUME_INDEX]
     str   r4, [rChannelPtr, #SND_CHANNEL_ENV_PITCH_INDEX]
     lsls  r4, rNote, #pitchDivisionBits

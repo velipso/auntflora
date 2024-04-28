@@ -7,41 +7,44 @@
 
 #
 # TODO:
-# 1. implement phase reset/continue
-# 2. test delay
-# 3. test bend
-# 4. test envelopes; unspecified loop points; push 0 on volume/pitch; sequence loop
-# 5. test instrument 0 'OFF' (broken)
-# 6. document
-# 7. save/restore synth state
-# 8. force END on last row..? embed END in wait?
-# 9. pattern extension compile-time feature..?
-#10. square volumes so lower volumes are more representative?
+# 1. test delay
+# 2. test bend
+# 3. test envelopes; unspecified loop points; push 0 on volume/pitch; sequence loop
+# 4. test instrument 0 'OFF' (broken)
+# 5. document
+# 6. save/restore synth state
+# 7. force END on last row..? embed END in wait?
+# 8. pattern extension compile-time feature..?
+# 9. square volumes so lower volumes are more representative?
 #
 
 new instrument BAS
   wave: tri
-  phase: reset  # TODO: continue
+  phase: continue
   volume: {12} 10 8 5 3 1 0
 end
 
 new instrument CH1
   wave: sq8
+  phase: continue
   volume: 8 12 16 14 12 10 8 6 4 2 0
 end
 
 new instrument CH2
   wave: sq4
+  phase: continue
   volume: 8 12 16 15 14 13 12 {11} 10 9 8 7 6 5 4 3 2 1 0
 end
 
 new instrument CH3
   wave: sq8
+  phase: continue
   volume: 8 12 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0
 end
 
 new instrument LEA
   wave: sq8
+  phase: continue
   volume:
     7 10 12 14 16 16 15 14 14 14 13 13
     {12 12 12 12 11 11 11 11 11}
@@ -53,6 +56,7 @@ end
 
 new instrument FLO
   wave: sq8
+  phase: continue
   volume: 16 15 14 13 12 {11} 10 9 8 6 4 2 0
 end
 
@@ -73,6 +77,7 @@ end
 
 new sequence 1  # title screen
   setup
+  titlesetup
   {title:1-2}
 end
 
@@ -94,10 +99,15 @@ end
 # TITLE
 #
 
-new pattern title:1
+new pattern titlesetup
   00  ---:---  ---:---  ---:CH1  ---:CH1  ---:BAS
-  00  ---:---  ---:---  ---:D00  ---:D01  G-3:V08
-  08  ---:---  ---:---  D-4:V01  A#4:V01  OFF:---
+  00  ---:---  ---:---  ---:D00  ---:D01  ---:V08
+  00  ---:---  ---:---  ---:V01  ---:V01  ---:END
+end
+
+new pattern title:1
+  00  ---:---  ---:---  ---:---  ---:---  G-3:---
+  08  ---:---  ---:---  D-4:---  A#4:---  OFF:---
   10  ---:---  ---:---  OFF:---  OFF:---  D-3:---
   18  ---:---  ---:---  D-4:---  A#4:---  OFF:---
   20  ---:---  ---:---  OFF:---  OFF:---  G-3:---
@@ -116,7 +126,7 @@ new pattern title:2
   28  ---:---  ---:---  ---:---  ---:---  D-3:---
   30  ---:---  ---:---  ---:---  ---:---  F-3:---
   38  ---:---  ---:---  ---:---  ---:---  F#3:---
-  40  ---:---  ---:---  ---:---  ---:---  OFF:END
+  40  ---:---  ---:---  ---:---  ---:---  ---:END
 end
 
 ###################################################

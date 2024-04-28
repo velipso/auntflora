@@ -528,7 +528,10 @@ static void play_game() {
         } else
           sfx_bump(); // failed to undo
       }
-    } else if (g_inputhit & SYS_INPUT_A) {
+    } else
+      last_undo = false;
+
+    if (g_inputhit & SYS_INPUT_A) {
       // can we checkpoint here?
       if (is_checkpoint(world_at(g_markers[0].x, g_markers[0].y))) {
         sfx_checkpoint();

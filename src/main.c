@@ -904,11 +904,12 @@ static void card_options() {
     "                    \n";
 
   int menu = 0;
-  bool refresh = true;
+  int refresh = 1;
   while (1) {
     if (refresh) {
-      sfx_click();
-      refresh = false;
+      if (refresh == 1)
+        sfx_click();
+      refresh = 0;
       // hide sprites
       for (int i = 0; i < 3; i++) {
         g_sprites[i].origin.x = 240;
@@ -961,12 +962,12 @@ static void card_options() {
     if (g_inputhit & SYS_INPUT_U) {
       if (menu > 0) {
         menu--;
-        refresh = true;
+        refresh = 1;
       }
     } else if (g_inputhit & SYS_INPUT_D) {
       if (menu < 4) {
         menu++;
-        refresh = true;
+        refresh = 1;
       }
     } else if (g_inputhit & SYS_INPUT_ST) {
       sfx_click();
@@ -985,7 +986,7 @@ static void card_options() {
           (((g_options & OPT_TILESET_MASK) + d) & OPT_TILESET_MASK);
         set_options(next, false);
         card_screen_setup();
-        refresh = true;
+        refresh = 1;
       }
     } else if (menu == 1) { // Border
       if (
@@ -994,7 +995,7 @@ static void card_options() {
       ) {
         set_options(g_options ^ OPT_HIDE_BORDERS, false);
         card_screen_setup();
-        refresh = true;
+        refresh = 1;
       }
     } else if (menu == 2) { // Scrolling
       if (
@@ -1003,14 +1004,14 @@ static void card_options() {
       ) {
         set_options(g_options ^ OPT_SNAP_SCROLL, false);
         card_screen_setup();
-        refresh = true;
+        refresh = 1;
       }
     } else if (menu == 3) { // Music
       if (g_inputhit & SYS_INPUT_L) {
         if (g_song_volume > 0) {
           g_song_volume = volume_map_fwd[volume_map_back[g_song_volume] - 1];
           snd_set_song_volume(g_song_volume);
-          refresh = true;
+          refresh = 1;
         } else
           sfx_bump();
       }
@@ -1018,7 +1019,7 @@ static void card_options() {
         if (g_song_volume < 16) {
           g_song_volume = volume_map_fwd[volume_map_back[g_song_volume] + 1];
           snd_set_song_volume(g_song_volume);
-          refresh = true;
+          refresh = 1;
         } else
           sfx_bump();
       }
@@ -1028,7 +1029,7 @@ static void card_options() {
           g_sfx_volume = volume_map_fwd[volume_map_back[g_sfx_volume] - 1];
           snd_set_sfx_volume(g_sfx_volume);
           sfx_push();
-          refresh = true;
+          refresh = 2; // don't play sfx_click
         } else
           sfx_bump();
       }
@@ -1037,7 +1038,7 @@ static void card_options() {
           g_sfx_volume = volume_map_fwd[volume_map_back[g_sfx_volume] + 1];
           snd_set_sfx_volume(g_sfx_volume);
           sfx_push();
-          refresh = true;
+          refresh = 2; // don't play sfx_click
         } else
           sfx_bump();
       }

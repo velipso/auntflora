@@ -142,6 +142,10 @@ render_channel:
     ldrsb rFinalVolume, [rPhase, r0]
     ldr   r0, [rChannelPtr, #SND_CHANNEL_CHAN_VOLUME]
     muls  rFinalVolume, r0
+    ldr   r0, =g_snd + SND_SYNTH + SND_SYNTH_VOLUME
+    ldr   r0, [r0]
+    muls  rFinalVolume, r0
+    asrs  rFinalVolume, #4
 
     // apply pitch envelope
     ldrh  rPhase, [rInstPtr, #SND_SONGINST_PITCH_ENV_OFFSET]
@@ -185,7 +189,7 @@ render_channel:
 next_osc_sample: // core loop!
     // rWave data is 15bit
     // rOutputBuffer is 16bit
-    // rFinalVolume is 8bit (0-256)
+    // rFinalVolume is 12bit (0-4096)
     cmp   rChannelLeft, #0
     moveq rSample0, #0
     ldrne rSample0, [rOutputBuffer]
@@ -305,6 +309,11 @@ render_pcm_inst:
     adds  rSamplePtr, r0
     ldr   r0, [rChannelPtr, #SND_CHANNEL_CHAN_VOLUME]
     muls  rFinalVolume, r0
+    ldr   r0, =g_snd + SND_SYNTH + SND_SYNTH_VOLUME
+    ldr   r0, [r0]
+    muls  rFinalVolume, r0
+    asrs  rFinalVolume, #4
+
     ldr   rPhase, [rChannelPtr, #SND_CHANNEL_PHASE]
     lsls  rPhase, #1
 
@@ -407,12 +416,9 @@ render_channel_continue:
     ldr   rSfxPtr2, [r0, #SND_SFX_WAV_BASE + SIZEOF_SND_SFX_ST * 2]
     ldr   rSfxPtr3, [r0, #SND_SFX_WAV_BASE + SIZEOF_SND_SFX_ST * 3]
 
-    // load volumes into rPackedVolumes 0xAABBCC (AA = Master, BB = SFX, CC = Synth)
+    // load volumes into rPackedVolumes 0xAAABBBB (AAAA = Master, BBBB = SFX)
     ldr   r0, =g_snd
-    ldr   rPackedVolumes, [r0, #SND_SYNTH + SND_SYNTH_VOLUME]
-    ldr   rSampleLeft, [r0, #SND_SFX_VOLUME]
-    lsls  rSampleLeft, #8
-    orrs  rPackedVolumes, rSampleLeft
+    ldr   rPackedVolumes, [r0, #SND_SFX_VOLUME]
     ldr   rSampleLeft, [r0, #SND_MASTER_VOLUME]
     lsls  rSampleLeft, #16
     orrs  rPackedVolumes, rSampleLeft
@@ -462,18 +468,15 @@ copy_next_sample:
     addne rSfxSample, r0
 
     // apply sfx volume
-    ands  r0, rPackedVolumes, #0xff00
-    lsrs  r0, #8
+    ands  r0, rPackedVolumes, #0xff
     muls  rSfxSample, r0
-    lsrs  rSfxSample, #4
+    asrs  rSfxSample, #8
 
     // synth
     movs  rSynthSample, #0
     cmp   rDidClear, #0
-    // read synth sample and apply synth volume
+    // read synth sample
     ldrnesh rSynthSample, [rInput]
-    ands  r0, rPackedVolumes, #0xff
-    muls  rSynthSample, r0
 
     // final sample
     adds  rSynthSample, rSfxSample
@@ -482,7 +485,7 @@ copy_next_sample:
     ands  r0, rPackedVolumes, #0xff0000
     lsrs  r0, #16
     muls  rSynthSample, r0
-    asrs  r0, rSynthSample, #16
+    asrs  r0, rSynthSample, #12
 
     // clamp r0 between -128 and 127 (magic)
     // rSfxSample and rSynthSample are just work registers that are available

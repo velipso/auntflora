@@ -22,7 +22,7 @@ void sfx_forward() {
   static int sfx = -2;
   if (sfx == -2)
     sfx = snd_find_wav("teleport");
-  snd_play_wav(sfx, 15, 10);
+  snd_play_wav(sfx, 16, 10);
 }
 
 void sfx_bump() {
@@ -36,14 +36,14 @@ void sfx_splash() {
   static int sfx = -2;
   if (sfx == -2)
     sfx = snd_find_wav("splash");
-  snd_play_wav(sfx, 8, 10);
+  snd_play_wav(sfx, 16, 10);
 }
 
 void sfx_click() {
   static int sfx = -2;
   if (sfx == -2)
     sfx = snd_find_wav("click");
-  snd_play_wav(sfx, 10, 10);
+  snd_play_wav(sfx, 8, 10);
 }
 
 void sfx_end() {

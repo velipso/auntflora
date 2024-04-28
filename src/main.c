@@ -334,27 +334,21 @@ restart_title_screen:
   while (1) {
     nextframe();
     if (
-      (g_inputhit & SYS_INPUT_L) ||
       (g_inputhit & SYS_INPUT_U) ||
-      ((g_inputhit & SYS_INPUT_SE) && menu == 1)
-    ) {
-      if (menu != 0) {
-        menu = 0;
-        g_sprites[0].pc = ani_start1;
-        g_sprites[1].pc = ani_start2;
-        sfx_click();
-      }
-    } else if (
       (g_inputhit & SYS_INPUT_R) ||
       (g_inputhit & SYS_INPUT_D) ||
-      ((g_inputhit & SYS_INPUT_SE) && menu == 0)
+      (g_inputhit & SYS_INPUT_L) ||
+      (g_inputhit & SYS_INPUT_SE)
     ) {
-      if (menu != 1) {
-        menu = 1;
+      menu = 1 - menu;
+      if (menu) {
         g_sprites[0].pc = ani_credits1;
         g_sprites[1].pc = ani_credits2;
-        sfx_click();
+      } else {
+        g_sprites[0].pc = ani_start1;
+        g_sprites[1].pc = ani_start2;
       }
+      sfx_click();
     } else if (
       (g_inputhit & SYS_INPUT_A) ||
       (g_inputhit & SYS_INPUT_ST)

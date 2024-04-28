@@ -32,7 +32,7 @@
 // align files to 4 bytes... required to keep linker in alignment (???)
 static void fclose4(FILE *fp) {
   long pos = ftell(fp);
-  int pad = 4 - (pos % 4);
+  int pad = (pos % 4) == 0 ? 0 : 4 - (pos % 4);
   for (int i = 0; i < pad; i++)
     fputc(0, fp);
   fclose(fp);
@@ -712,7 +712,10 @@ static int snd_wav(
         ) {
           fprintf(stderr,
             "WARNING: Incompatible wav file:\n"
-            "  Required 32768 sample rate, mono, 16-bits per sample\n"
+            "  Required 32768 sample rate, mono, 16-bits per sample\n\n"
+            "You can convert files using the `sox` command, available here:\n"
+            "  https://sourceforge.net/projects/sox/\n\n"
+            "$ sox input.wav -b 16 -r 32768 -c 1 output.wav norm 0\n"
           );
           goto invalid_wav_file;
         }

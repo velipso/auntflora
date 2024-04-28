@@ -38,3 +38,10 @@ void sfx_splash() {
     sfx = snd_find_wav("splash");
   snd_play_wav(sfx, 8, 10);
 }
+
+void sfx_click() {
+  static int sfx = -2;
+  if (sfx == -2)
+    sfx = snd_find_wav("click");
+  snd_play_wav(sfx, 8, 10);
+}

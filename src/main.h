@@ -8,10 +8,13 @@
 #pragma once
 #include "sys.h"
 
+#define MAX_MARKERS  32
+
 extern u8 g_map0[64 * 64];
 extern u8 g_map1[64 * 64];
 extern int g_inputdown;
 extern int g_inputhit;
+extern int g_total_steps;
 extern struct viewport_st {
   int wx;
   int wy;
@@ -24,7 +27,8 @@ extern struct world_st {
 extern struct markers_st {
   int x;
   int y;
-} g_markers[3];
+} g_markers[MAX_MARKERS];
+extern int g_seen_marker[MAX_MARKERS];
 extern int g_playerdir;
 extern int g_options;
 
@@ -36,6 +40,7 @@ BINFILE(palette_bin);
 BINFILE(title_palette_bin);
 BINFILE(title_bin);
 BINFILE(font_hd_bin);
+BINFILE(font_sd_bin);
 BINFILE(tiles_hd_bin);
 BINFILE(tiles_sd_bin);
 BINFILE(sprites_hd_bin);

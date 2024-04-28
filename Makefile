@@ -69,6 +69,7 @@ OBJS := \
 	$(TGT_DATA)/title.o \
 	$(TGT_DATA)/title_palette.o \
 	$(TGT_DATA)/font_hd.o \
+	$(TGT_DATA)/font_sd.o \
 	$(TGT_DATA)/tiles_hd.o \
 	$(TGT_DATA)/tiles_sd.o \
 	$(TGT_DATA)/sprites_hd.o \
@@ -122,6 +123,7 @@ all: $(ROM)
 
 $(TGT_DATA)/palette.bin: \
 	$(DATA)/font_hd.png \
+	$(DATA)/font_sd.png \
 	$(DATA)/tiles_sd.png \
 	$(DATA)/tiles_hd.png \
 	$(DATA)/sprites_hd.png \
@@ -129,7 +131,7 @@ $(TGT_DATA)/palette.bin: \
 	$(XFORM)
 	$(MKDIR) -p $(@D)
 	$(XFORM) palette256 $(TGT_DATA)/palette.bin \
-		$(DATA)/font_hd.png $(DATA)/tiles_hd.png $(DATA)/tiles_sd.png \
+		$(DATA)/font_hd.png $(DATA)/font_sd.png $(DATA)/tiles_hd.png $(DATA)/tiles_sd.png \
 		$(DATA)/sprites_hd.png $(DATA)/sprites_sd.png
 
 $(TGT_DATA)/palette.o: $(TGT_DATA)/palette.bin
@@ -151,6 +153,11 @@ $(TGT_DATA)/font_hd.o: $(DATA)/font_hd.png $(TGT_DATA)/palette.bin $(XFORM)
 	$(MKDIR) -p $(@D)
 	$(XFORM) expand6x6to8x8 $(DATA)/font_hd.png $(TGT_DATA)/palette.bin $(TGT_DATA)/font_hd.bin
 	cd $(TGT_DATA) && $(call objbinary,font_hd.bin,font_hd.o)
+
+$(TGT_DATA)/font_sd.o: $(DATA)/font_sd.png $(TGT_DATA)/palette.bin $(XFORM)
+	$(MKDIR) -p $(@D)
+	$(XFORM) expand6x6to8x8 $(DATA)/font_sd.png $(TGT_DATA)/palette.bin $(TGT_DATA)/font_sd.bin
+	cd $(TGT_DATA) && $(call objbinary,font_sd.bin,font_sd.o)
 
 $(TGT_DATA)/tiles_hd.o: $(DATA)/tiles_hd.png $(TGT_DATA)/palette.bin $(XFORM)
 	$(MKDIR) -p $(@D)

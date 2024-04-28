@@ -21,9 +21,11 @@ int g_inputdown = 0;
 int g_inputhit = 0;
 struct viewport_st g_viewport = {0};
 struct world_st g_world = {0};
-struct markers_st g_markers[3] = {0};
+struct markers_st g_markers[MAX_MARKERS] = {0};
+int g_seen_marker[MAX_MARKERS] = {0};
 int g_playerdir = 3;
 int g_options = 0;
+int g_total_steps = 0;
 static int g_load_palette = 0;
 static const u8 zero[64] = {0};
 
@@ -89,6 +91,8 @@ static void set_options(int opt) {
   nextframe();
 
   g_options = opt;
+  sys_set_bg2_enable(true);
+  sys_set_bg3_enable(true);
   sys_set_screen_mode(
     opt_standard_def()
       ? SYS_SCREEN_MODE_2S5X5
@@ -117,11 +121,13 @@ static void set_options(int opt) {
   if (opt_standard_def()) {
     sys_copy_tiles(0, 0, BINADDR(tiles_sd_bin), BINSIZE(tiles_sd_bin));
     sys_copy_tiles(4, 0, BINADDR(sprites_sd_bin), BINSIZE(sprites_sd_bin));
+    sys_copy_tiles(1, 0, BINADDR(font_sd_bin), BINSIZE(font_sd_bin));
     sys_set_bgs2_scroll(0x019a * 5, 0x019a * 0);
     sys_set_bgs3_scroll(0x019a * 5, 0x019a * 0);
   } else {
     sys_copy_tiles(0, 0, BINADDR(tiles_hd_bin), BINSIZE(tiles_hd_bin));
     sys_copy_tiles(4, 0, BINADDR(sprites_hd_bin), BINSIZE(sprites_hd_bin));
+    sys_copy_tiles(1, 0, BINADDR(font_hd_bin), BINSIZE(font_hd_bin));
     sys_set_bgs2_scroll(0x0156 * 30 - 12, 0x0156 * 16);
     sys_set_bgs3_scroll(0x0156 * 30 - 12, 0x0156 * 16);
   }
@@ -234,9 +240,15 @@ static void load_world() {
     int y = markers[i * 2 + 1];
     if (x == 0xffff)
       break;
-    g_markers[i].x = x;
-    g_markers[i].y = y;
+    if (i < MAX_MARKERS) {
+      g_markers[i].x = x;
+      g_markers[i].y = y;
+    }
     i++;
+  }
+  for (; i < MAX_MARKERS; i++) {
+    g_markers[i].x = -1;
+    g_markers[i].y = -1;
   }
 
   // initialize undo
@@ -246,7 +258,7 @@ static void load_world() {
 }
 
 void nextframe() {
-  for (i32 i = 0; i < 128; i++)
+  for (int i = 0; i < 128; i++)
     ani_step(i);
   sys_nextframe();
 }
@@ -281,7 +293,7 @@ static void title_screen() {
   sys_set_screen_mode(SYS_SCREEN_MODE_2I);
   sys_copy_tiles(0, 0, BINADDR(title_bin), BINSIZE(title_bin));
   sys_copy_bgpal(0, BINADDR(title_palette_bin), BINSIZE(title_palette_bin));
-  sys_set_screen_enable(1);
+  sys_set_screen_enable(true);
 
   snd_set_master_volume(16);
   snd_set_song_volume(12);
@@ -292,28 +304,122 @@ static void title_screen() {
   while (g_inputdown) sys_nextframe();
   while (!g_inputdown) sys_nextframe();
   while (g_inputdown) sys_nextframe();
+  sfx_click();
 
   // fade out music
-  for (int i = 16; i >= 0; i--) {
-    snd_set_master_volume(i);
+  for (int i = 12; i >= 0; i--) {
+    snd_set_song_volume(i);
     sys_nextframe();
   }
 }
 
-static void play_game() {
+static void card_screen(const char *text) {
+  const char *chars =
+    " !\"'(),-.0123456"
+    "789?ABCDFGHIJKLM"
+    "NOPRSTWabcdefghi"
+    "jklmnoprstuvwxyz";
   sys_set_vblank(irq_vblank_game);
-  sys_copy_tiles(1, 0, BINADDR(font_hd_bin), BINSIZE(font_hd_bin));
+  g_load_palette = 1; // load black
+  sys_nextframe();
+  sys_set_screen_mode(SYS_SCREEN_MODE_2S6X6);
+  sys_set_bg_config(
+    2, // background #
+    0, // priority
+    1, // tile start
+    0, // mosaic
+    1, // 256 colors
+    28, // map start
+    0, // wrap
+    SYS_BGS_SIZE_512X512
+  );
+  sys_set_bg2_enable(true);
+  sys_set_bg3_enable(false);
+  sys_set_bgs2_scroll(0x0156 * -6, 0x0156 * 4);
 
+  // print message...
+  int x = 0;
+  int y = 0;
+  for (int i = 0; text[i]; i++) {
+    if (text[i] == '\n') {
+      x = 0;
+      y++;
+    } else {
+      // print text[i] at (x, y)
+      for (int j = 0; chars[j]; j++) {
+        if (text[i] == chars[j]) {
+          // print character index j at (x, y)
+          int jx = j % 16;
+          int jy = j / 16;
+          int jk = jx * 2 + jy * 2 * 32;
+          int k = x * 2 + y * 2 * 64;
+          g_map0[k +  0] = jk +  0;
+          g_map0[k +  1] = jk +  1;
+          g_map0[k + 64] = jk + 32;
+          g_map0[k + 65] = jk + 33;
+          x++;
+          break;
+        }
+      }
+    }
+  }
+
+  g_load_palette = 2; // load colors
+
+  // wait for keypress
+  while (g_inputdown) sys_nextframe();
+  // prevent spamming
+  for (int i = 0; i < 20; i++) sys_nextframe();
+  while (!(g_inputdown & SYS_INPUT_A)) sys_nextframe();
+  while (g_inputdown) sys_nextframe();
+  sfx_click();
+}
+
+static void card_screen_from_marker(int marker);
+static void restore_game_state();
+static void move_player(int x, int y, int dir) {
+  // check for messages or end
+  int hit_marker = -1;
+  for (int m = 3; m < MAX_MARKERS; m++) {
+    if (g_markers[m].x == x && g_markers[m].y == y) {
+      hit_marker = m - 3;
+      break;
+    }
+    if (m == 12 && g_markers[m].x == x && g_markers[m].y == y + 1) {
+      // annoyingly, the Parler marker is two blocks high :-( so special hack here
+      // to handle it
+      hit_marker = 9;
+      break;
+    }
+  }
+  if (hit_marker >= 0 && g_seen_marker[hit_marker])
+    hit_marker = -1;
+  write_player(x, y, dir, hit_marker);
+  if (hit_marker >= 0) {
+    card_screen_from_marker(hit_marker);
+    restore_game_state();
+  }
+}
+
+static void restore_game_state() {
+  sys_set_vblank(irq_vblank_game);
+  g_viewport = find_player_level();
+  set_options(g_options);
+  sys_nextframe();
+}
+
+static bool fire_undo_next_frame = false;
+static void play_game() {
   load_world();
 
   g_sprites[0].pc = ani_player_l;
   g_sprites[1].pc = ani_aunt;
   g_sprites[2].pc = ani_cat;
 
-  g_viewport = find_player_level();
-  set_options(0);
-  sys_nextframe();
-  sys_set_screen_enable(1);
+  restore_game_state();
+  sys_set_bg2_enable(true);
+  sys_set_bg3_enable(true);
+  sys_set_screen_enable(true);
 
   snd_set_master_volume(16);
   snd_set_song_volume(12);
@@ -323,8 +429,12 @@ static void play_game() {
   while (1) {
     nextframe();
 
-    if (g_inputhit & SYS_INPUT_B) {
+    if (
+      fire_undo_next_frame ||
+      (g_inputhit & SYS_INPUT_B)
+    ) {
       // undo
+      fire_undo_next_frame = false;
       undo_fire();
       g_viewport = find_player_level();
       snap_player();
@@ -350,7 +460,7 @@ static void play_game() {
             else
               sfx_walk();
             pushers_find_around_player(dir);
-            write_player(nx, ny, dir, -1);
+            move_player(nx, ny, dir);
           } else if (is_pushable_by_player(cell, dir)) {
             int px = nx;
             int py = ny;
@@ -367,7 +477,7 @@ static void play_game() {
                 write_logic(nx, ny, 0);
                 sfx_push();
                 pushers_find_around_player(dir);
-                write_player(nx, ny, dir, -1);
+                move_player(nx, ny, dir);
                 break;
               } else if (is_pushable_by_block(nc, dir)) {
                 advance_pt(&px, &py, dir, 1);
@@ -384,7 +494,7 @@ static void play_game() {
             if (is_empty_for_player(world_at(nx, ny))) {
               sfx_forward();
               pushers_find_around_player(dir);
-              write_player(nx, ny, dir, -1);
+              move_player(nx, ny, dir);
             }
           }
 
@@ -405,8 +515,311 @@ static void play_game() {
   }
 }
 
+static void roll_credits() {
+  card_screen(
+    "                    \n"
+    "                    \n"
+    "                    \n"
+    "                    \n"
+    "  created by        \n"
+    "     anna anthropy  \n"
+    "                    \n"
+    "                    \n"
+    "                    \n"
+    "                    \n"
+    "                    \n"
+    "   A to continue    \n"
+    "                    \n"
+    "                    \n"
+  );
+  card_screen(
+    "                    \n"
+    "                    \n"
+    "                    \n"
+    "                    \n"
+    "  with help from    \n"
+    "     Alan Hazelden, \n"
+    "     Jonah Ostroff, \n"
+    "       and          \n"
+    "     Jamie Perconti \n"
+    "                    \n"
+    "                    \n"
+    "   A to continue    \n"
+    "                    \n"
+    "                    \n"
+  );
+  card_screen(
+    "                    \n"
+    "                    \n"
+    "                    \n"
+    "  playtested by     \n"
+    "     Jen Ada,       \n"
+    "     John H.,       \n"
+    "     Chris Harris,  \n"
+    "       and          \n"
+    "     Kelsey Higham  \n"
+    "                    \n"
+    "                    \n"
+    "   A to continue    \n"
+    "                    \n"
+    "                    \n"
+  );
+  card_screen(
+    "                    \n"
+    "                    \n"
+    "  Game Boy Advance  \n"
+    "  port by           \n"
+    "     Sean Connelly  \n"
+    "       and          \n"
+    "     Casey Dean     \n"
+    "       from         \n"
+    "     Pocket Pulp    \n"
+    "     www.pulp.biz   \n"
+    "                    \n"
+    "   A to continue    \n"
+    "                    \n"
+    "                    \n"
+  );
+}
+
+static void card_screen_from_marker(int marker) {
+  char message[300];
+  const char *template =
+    "                    \n"
+    "                    \n"
+    "                    \n"
+    "                    \n"
+    "                    \n"
+    "                    \n"
+    "                    \n"
+    "                    \n"
+    "                    \n"
+    "                    \n"
+    "                    \n"
+    "   A to continue    \n"
+    "                    \n"
+    "                    \n";
+  int i;
+  for (i = 0; template[i]; i++)
+    message[i] = template[i];
+  message[i] = 0;
+  #define M(r, msg)                   \
+    do {                              \
+      const char *str = msg;          \
+      for (i = 0; str[i]; i++)        \
+        message[r * 21 + i] = str[i]; \
+    } while (0)
+  switch (marker) {
+    case  0: M(5, "   The Main Hall    \n"); break;
+    case  1: M(5, "    The Kitchen     \n"); break;
+    case  2: M(5, " The Back Stairway  \n"); break;
+    case  3: M(5, "   The Back Porch   \n"); break;
+    case  4: M(5, "   The Side Gate    \n"); break;
+    case  5: M(5, "  The Storage Room  \n"); break;
+    case  6: M(5, "   The Colonnade    \n");
+             M(6, "      Ballroom      \n"); break;
+    case  7: M(5, "     The Annex      \n"); break;
+    case  8: M(5, "     The Cellar     \n"); break;
+    case  9: M(5, "     The Parlor     \n"); break;
+    case 10: M(5, "    The Terrace     \n"); break;
+    case 11: M(5, "     The Study      \n"); break;
+    case 12: M(5, "    The Library     \n"); break;
+    case 13: M(5, "  The Dining Room   \n"); break;
+    case 14: M(5, "     The Secret     \n");
+             M(6, "      Passage       \n"); break;
+    case 15: M(5, "  The Wine Cellar   \n"); break;
+    case 16: M(5, "  The Conservatory  \n"); break;
+    case 17: M(5, "     The Attic      \n"); break;
+    case 18: // beat game!
+      // hide sprites
+      for (int i = 0; i < 3; i++) {
+        g_sprites[i].origin.x = 240;
+        g_sprites[i].origin.y = 160;
+        ani_step(i);
+      }
+      for (int i = 16; i >= 0; i--)
+        snd_set_master_volume(i);
+      snd_load_song(BINADDR(song1_gvsong), 2); // silence
+      snd_set_master_volume(16);
+      card_screen(
+        "                    \n"
+        "                    \n"
+        "                    \n"
+        "                    \n"
+        "\"Oh hello, Sweet-   \n"
+        " heart. Won't you   \n"
+        " join your Auntie   \n"
+        " for a cup of tea?\" \n"
+        "                    \n"
+        "                    \n"
+        "                    \n"
+        "   A to continue    \n"
+        "                    \n"
+        "                    \n"
+      );
+      card_screen(
+        "                    \n"
+        "                    \n"
+        "                    \n"
+        "\"Auntie, I don't    \n"
+        " know how you can   \n"
+        " live in this huge  \n"
+        " place all by your- \n"
+        " self.\"             \n"
+        "                    \n"
+        "                    \n"
+        "                    \n"
+        "   A to continue    \n"
+        "                    \n"
+        "                    \n"
+      );
+      card_screen(
+        "                    \n"
+        "                    \n"
+        "                    \n"
+        "\"I'm not alone, I   \n"
+        " have Catsup here.  \n"
+        " Now drink your tea \n"
+        " before it gets     \n"
+        " cold.\"             \n"
+        "                    \n"
+        "                    \n"
+        "                    \n"
+        "   A to continue    \n"
+        "                    \n"
+        "                    \n"
+      );
+      card_screen(
+        "                    \n"
+        "                    \n"
+        "                    \n"
+        "                    \n"
+        "  \"Okay, Auntie.    \n"
+        "   I missed you.\"   \n"
+        "                    \n"
+        "                    \n"
+        "                    \n"
+        "                    \n"
+        "                    \n"
+        "   A to continue    \n"
+        "                    \n"
+        "                    \n"
+      );
+      snd_load_song(BINADDR(song1_gvsong), 0);
+      roll_credits();
+      M( 3, "   Thank you for    ");
+      M( 4, "      playing!      ");
+      M( 6, "    Total Steps     ");
+      { // output total steps
+        int i = 8 * 21 + 11;
+        int n = g_total_steps;
+        while (n > 0) {
+          int d = n / 10;
+          int r = n - d * 10;
+          n = d;
+          message[i] = '0' + r;
+          i--;
+        }
+      }
+      fire_undo_next_frame = true; // undo to immediately before beating game
+      break;
+    default:
+      return;
+  }
+  #undef M
+  // hide sprites
+  for (int i = 0; i < 3; i++) {
+    g_sprites[i].origin.x = 240;
+    g_sprites[i].origin.y = 160;
+    ani_step(i);
+  }
+
+  card_screen(message);
+}
+
 void gvmain() {
   sys_init();
   title_screen();
+  sys_copy_tiles(1, 0, BINADDR(font_hd_bin), BINSIZE(font_hd_bin));
+  card_screen(
+    "                    \n"
+    "                    \n"
+    "                    \n"
+    "    Aunt Flora's    \n"
+    "      Mansion       \n"
+    "                    \n"
+    "  by anna anthropy  \n"
+    "                    \n"
+    "                    \n"
+    "                    \n"
+    " D pad to move      \n"
+    " A to action        \n"
+    " B to undo          \n"
+    "                    \n"
+  );
+  card_screen(
+    "                    \n"
+    "                    \n"
+    "                    \n"
+    " A letter from      \n"
+    " Great-Aunt Flora!  \n"
+    "                    \n"
+    " She wants me to    \n"
+    " join her for tea.  \n"
+    "                    \n"
+    "                    \n"
+    "                    \n"
+    "   A to continue    \n"
+    "                    \n"
+    "                    \n"
+  );
+  card_screen(
+    "                    \n"
+    "                    \n"
+    "  Auntie Flora's    \n"
+    "  mansion is full   \n"
+    "  of so much junk,  \n"
+    "  though!           \n"
+    "                    \n"
+    "  How does she      \n"
+    "  manage it all at  \n"
+    "  her age?          \n"
+    "                    \n"
+    "   A to continue    \n"
+    "                    \n"
+    "                    \n"
+  );
+  card_screen(
+    "                    \n"
+    "                    \n"
+    "                    \n"
+    "                    \n"
+    "                    \n"
+    "    Aunt Flora's    \n"
+    "      Mansion       \n"
+    "                    \n"
+    "                    \n"
+    "                    \n"
+    "                    \n"
+    "   A to continue    \n"
+    "                    \n"
+    "                    \n"
+  );
+  card_screen(
+    "                    \n"
+    "Step into a Heart   \n"
+    "and press A to save \n"
+    "your game!          \n"
+    "                    \n"
+    "Press Select to     \n"
+    "return to your last \n"
+    "save!               \n"
+    "                    \n"
+    "It's possible, but  \n"
+    "hopefully not easy, \n"
+    "to get stuck - so   \n"
+    "be careful saving!  \n"
+    "                    \n"
+  );
   play_game();
 }

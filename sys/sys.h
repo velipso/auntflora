@@ -61,8 +61,12 @@ extern void gvmain();
 #define SYS_INPUT_ZL  (1 << 9)
 
 void sys_init();
-void sys_set_sprite_enable(i32 enable);
-void sys_set_screen_enable(i32 enable);
+void sys_set_sprite_enable(bool enable);
+void sys_set_screen_enable(bool enable);
+void sys_set_bg0_enable(bool enable);
+void sys_set_bg1_enable(bool enable);
+void sys_set_bg2_enable(bool enable);
+void sys_set_bg3_enable(bool enable);
 void sys_set_screen_mode(i32 mode);
 void sys_set_vblank(void (*irq_vblank_handler)());
 void sys_nextframe();

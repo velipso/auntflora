@@ -61,7 +61,7 @@ static void print_usage() {
 // align files to 4 bytes... required to keep linker in alignment (???)
 static void fclose4(FILE *fp) {
   long pos = ftell(fp);
-  int pad = 4 - (pos % 4);
+  int pad = (pos % 4) == 0 ? 0 : 4 - (pos % 4);
   for (int i = 0; i < pad; i++)
     fputc(0, fp);
   fclose(fp);

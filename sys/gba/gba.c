@@ -17,6 +17,7 @@ extern void sys__snd_frame();
 struct snd_st g_snd;
 
 static u16 SECTION_EWRAM g_screen_sprite_enable;
+static u16 SECTION_EWRAM g_screen_bg_enable;
 static u16 SECTION_EWRAM g_screen_mode;
 static u16 SECTION_EWRAM g_screen_enable;
 static void (*g_vblank)();
@@ -35,17 +36,50 @@ void sys_init() {
   _sys_snd_init();
   g_screen_sprite_enable = 0x1000;
   g_screen_enable = 0x0080;
+  g_screen_bg_enable = 0x0f00;
   g_screen_mode = SYS_SCREEN_MODE_4T;
   _sys_set_screen_mode();
 }
 
-void sys_set_sprite_enable(i32 enable) {
+void sys_set_sprite_enable(bool enable) {
   g_screen_sprite_enable = enable ? 0x1000 : 0;
   _sys_set_screen_mode();
 }
 
-void sys_set_screen_enable(i32 enable) {
+void sys_set_screen_enable(bool enable) {
   g_screen_enable = enable ? 0 : 0x0080;
+  _sys_set_screen_mode();
+}
+
+void sys_set_bg0_enable(bool enable) {
+  if (enable)
+    g_screen_bg_enable |= 0x0100;
+  else
+    g_screen_bg_enable &= ~0x0100;
+  _sys_set_screen_mode();
+}
+
+void sys_set_bg1_enable(bool enable) {
+  if (enable)
+    g_screen_bg_enable |= 0x0200;
+  else
+    g_screen_bg_enable &= ~0x0200;
+  _sys_set_screen_mode();
+}
+
+void sys_set_bg2_enable(bool enable) {
+  if (enable)
+    g_screen_bg_enable |= 0x0400;
+  else
+    g_screen_bg_enable &= ~0x0400;
+  _sys_set_screen_mode();
+}
+
+void sys_set_bg3_enable(bool enable) {
+  if (enable)
+    g_screen_bg_enable |= 0x0800;
+  else
+    g_screen_bg_enable &= ~0x0800;
   _sys_set_screen_mode();
 }
 
@@ -61,36 +95,43 @@ static void _sys_set_screen_mode() {
         g_screen_enable |
         g_screen_sprite_enable |
         0x0000 | // mode 0
-        0x0100 | // enable BG0
-        0x0200 | // enable BG1
-        0x0400 | // enable BG2
-        0x0800;  // enable BG3
+        (g_screen_bg_enable & (
+          0x0100 | // enable BG0
+          0x0200 | // enable BG1
+          0x0400 | // enable BG2
+          0x0800   // enable BG3
+        ));
       break;
     case SYS_SCREEN_MODE_2T1S: // 2 text, 1 scaling, arbitrary scaling
       REG_DISPCNT =
         g_screen_enable |
         g_screen_sprite_enable |
         0x0001 | // mode 1
-        0x0100 | // enable BG0
-        0x0200 | // enable BG1
-        0x0400 | // enable BG2
-        0x1000;  // enable OAM
+        (g_screen_bg_enable & (
+          0x0100 | // enable BG0
+          0x0200 | // enable BG1
+          0x0400   // enable BG2
+        ));
       break;
     case SYS_SCREEN_MODE_2S: // 2 scaling, arbitrary scaling
       REG_DISPCNT =
         g_screen_enable |
         g_screen_sprite_enable |
         0x0002 | // mode 2
-        0x0400 | // enable BG2
-        0x0800;  // enable BG3
+        (g_screen_bg_enable & (
+          0x0400 | // enable BG2
+          0x0800   // enable BG3
+        ));
       break;
     case SYS_SCREEN_MODE_2S6X6: // 2 scaling, targeting 6x6 tiles
       REG_DISPCNT =
         g_screen_enable |
         g_screen_sprite_enable |
         0x0002 | // mode 2
-        0x0400 | // enable BG2
-        0x0800;  // enable BG3
+        (g_screen_bg_enable & (
+          0x0400 | // enable BG2
+          0x0800   // enable BG3
+        ));
 
       // set scaling registers
       REG_BG2PA = 0x0156; // 8/6 * 0x100
@@ -107,8 +148,10 @@ static void _sys_set_screen_mode() {
         g_screen_enable |
         g_screen_sprite_enable |
         0x0002 | // mode 2
-        0x0400 | // enable BG2
-        0x0800;  // enable BG3
+        (g_screen_bg_enable & (
+          0x0400 | // enable BG2
+          0x0800   // enable BG3
+        ));
 
       // set scaling registers
       REG_BG2X = 0;
@@ -129,7 +172,9 @@ static void _sys_set_screen_mode() {
         g_screen_enable |
         g_screen_sprite_enable |
         0x0003 | // mode 3
-        0x0400;  // enable BG2
+        (g_screen_bg_enable & (
+          0x0400 // enable BG2
+        ));
 
       // reset registers
       REG_BG2X = 0;
@@ -144,14 +189,18 @@ static void _sys_set_screen_mode() {
         g_screen_enable |
         g_screen_sprite_enable |
         0x0005 | // mode 5
-        0x0400;  // enable BG2
+        (g_screen_bg_enable & (
+          0x0400 // enable BG2
+        ));
       break;
     case SYS_SCREEN_MODE_2I: // 2 indexed (256 color)
       REG_DISPCNT =
         g_screen_enable |
         g_screen_sprite_enable |
         0x0004 | // mode 4
-        0x0400;  // enable BG2
+        (g_screen_bg_enable & (
+          0x0400 // enable BG2
+        ));
       break;
   }
 }

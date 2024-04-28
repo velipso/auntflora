@@ -76,9 +76,17 @@ void undo_fire() {
         advance_pt(&x, &y, newdir, -1);
       }
       set_player_ani_dir(olddir);
-      g_markers[0].x = x;
-      g_markers[0].y = y;
-      // TODO: do something with msg
+      if (
+        g_markers[0].x != x ||
+        g_markers[0].y != y
+      ) {
+        g_markers[0].x = x;
+        g_markers[0].y = y;
+        // cut the player some slack and don't count undo's towards total steps
+        g_total_steps--;
+      }
+      if (msg >= 0 && msg < MAX_MARKERS)
+        g_seen_marker[msg] = 0;
     } else {
       // logic write
       int oldlogic = payload & 0x3f;
@@ -100,8 +108,20 @@ void write_logic(int x, int y, int data) {
 void write_player(int x, int y, int dir, int message) {
   g_dirty = 1;
   int old = g_playerdir;
-  g_markers[0].x = x;
-  g_markers[0].y = y;
+  if (
+    g_markers[0].x != x ||
+    g_markers[0].y != y
+  ) {
+    g_markers[0].x = x;
+    g_markers[0].y = y;
+    g_total_steps++;
+  }
+  if (message >= 0 && message < MAX_MARKERS) {
+    if (g_seen_marker[message])
+      message = -1;
+    else
+      g_seen_marker[message] = 1;
+  }
   set_player_ani_dir(dir);
   undo_push(0x40000000 | (y << 21) | (x << 12) | (dir << 10) | (old << 8) | (message & 0xff));
 }

@@ -31,8 +31,11 @@ extern struct undo_st {
   u16 tail;
 } g_undo;
 extern int g_dirty;
+extern int g_checkpoint;
 
 void undo_finish();
 void undo_fire();
+void checkpoint_save();
+bool checkpoint_restore();
 void write_logic(int x, int y, int data);
 void write_player(int x, int y, int dir, int message);

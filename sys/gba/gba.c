@@ -201,6 +201,13 @@ static void _sys_set_screen_mode() {
         (g_screen_bg_enable & (
           0x0400 // enable BG2
         ));
+      // reset registers
+      REG_BG2X = 0;
+      REG_BG2Y = 0;
+      REG_BG2PA = 0x0100;
+      REG_BG2PB = 0;
+      REG_BG2PC = 0;
+      REG_BG2PD = 0x0100;
       break;
   }
 }

@@ -27,9 +27,12 @@ int g_playerdir = 3;
 int g_options = 0;
 int g_total_steps = 0;
 static int g_load_palette = 0;
+static int g_song_volume = 6;
+static int g_sfx_volume = 16;
 static const u8 zero[64] = {0};
 
 static void SECTION_IWRAM_ARM irq_vblank_title() {
+  sys_copy_oam(g_oam);
   int inp = sys_input() ^ 0x3ff;
   g_inputhit = ~g_inputdown & inp;
   g_inputdown = inp;
@@ -86,7 +89,7 @@ static inline bool opt_standard_def() {
 }
 
 static void snap_player();
-static void set_options(int opt) {
+static void set_options(int opt, bool load_colors) {
   g_load_palette = 1; // load black
   nextframe();
 
@@ -138,8 +141,10 @@ static void set_options(int opt) {
   snap_player();
   copy_world_offset();
 
-  g_load_palette = 2; // load colors
-  nextframe();
+  if (load_colors) {
+    g_load_palette = 2; // load colors
+    nextframe();
+  }
 }
 
 void set_player_ani_dir(int dir) {
@@ -286,42 +291,102 @@ void move_screen_to_player() {
   snap_player();
 }
 
+static void roll_credits();
 static void title_screen() {
+  snd_set_master_volume(16);
+  snd_set_song_volume(g_song_volume);
+  snd_set_sfx_volume(g_sfx_volume);
+  snd_load_song(BINADDR(song1_gvsong), 1);
+restart_title_screen:
   sys_set_vblank(irq_vblank_title);
-  sys_nextframe();
+  nextframe();
 
   sys_set_screen_mode(SYS_SCREEN_MODE_2I);
   sys_copy_tiles(0, 0, BINADDR(title_bin), BINSIZE(title_bin));
+  sys_copy_tiles(4, 0, BINADDR(sprites_hd_bin), BINSIZE(sprites_hd_bin));
   sys_copy_bgpal(0, BINADDR(title_palette_bin), BINSIZE(title_palette_bin));
+  sys_copy_spritepal(0, BINADDR(palette_bin), BINSIZE(palette_bin));
   sys_set_screen_enable(true);
 
-  snd_set_master_volume(16);
-  snd_set_song_volume(12);
-  snd_set_sfx_volume(16);
-  snd_load_song(BINADDR(song1_gvsong), 1);
+  // wait for no keys
+  while (g_inputdown) nextframe();
+
+  // wait two second
+  for (int i = 0; i < 120; i++) {
+    nextframe();
+    if (
+      (g_inputhit & SYS_INPUT_A) ||
+      (g_inputhit & SYS_INPUT_ST)
+    )
+      break;
+  }
+
+  g_sprites[0].pc = ani_start1;
+  g_sprites[0].origin.x = 56;
+  g_sprites[0].origin.y = 128;
+  g_sprites[1].pc = ani_start2;
+  g_sprites[1].origin.x = 120;
+  g_sprites[1].origin.y = 128;
+
+  int menu = 0;
 
   // wait for keypress
-  while (g_inputdown) sys_nextframe();
-  while (!g_inputdown) sys_nextframe();
-  while (g_inputdown) sys_nextframe();
-  sfx_click();
+  while (1) {
+    nextframe();
+    if (
+      (g_inputhit & SYS_INPUT_L) ||
+      (g_inputhit & SYS_INPUT_U) ||
+      ((g_inputhit & SYS_INPUT_SE) && menu == 1)
+    ) {
+      if (menu != 0) {
+        menu = 0;
+        g_sprites[0].pc = ani_start1;
+        g_sprites[1].pc = ani_start2;
+        sfx_click();
+      }
+    } else if (
+      (g_inputhit & SYS_INPUT_R) ||
+      (g_inputhit & SYS_INPUT_D) ||
+      ((g_inputhit & SYS_INPUT_SE) && menu == 0)
+    ) {
+      if (menu != 1) {
+        menu = 1;
+        g_sprites[0].pc = ani_credits1;
+        g_sprites[1].pc = ani_credits2;
+        sfx_click();
+      }
+    } else if (
+      (g_inputhit & SYS_INPUT_A) ||
+      (g_inputhit & SYS_INPUT_ST)
+    ) {
+      sfx_click();
 
-  // fade out music
-  for (int i = 12; i >= 0; i--) {
-    snd_set_song_volume(i);
-    sys_nextframe();
+      if (menu == 0) {
+        // fade out music
+        for (int i = g_song_volume; i >= 0; i--) {
+          snd_set_song_volume(i);
+          nextframe();
+        }
+      }
+
+      sys_copy_tiles(1, 0, BINADDR(font_hd_bin), BINSIZE(font_hd_bin));
+      g_sprites[0].pc = NULL;
+      g_sprites[1].pc = NULL;
+
+      if (menu == 0)
+        break;
+      else {
+        roll_credits();
+        goto restart_title_screen;
+      }
+    }
   }
 }
 
-static void card_screen(const char *text) {
-  const char *chars =
-    " !\"'(),-.0123456"
-    "789?ABCDFGHIJKLM"
-    "NOPRSTWabcdefghi"
-    "jklmnoprstuvwxyz";
+static void card_screen_setup() {
   sys_set_vblank(irq_vblank_game);
   g_load_palette = 1; // load black
-  sys_nextframe();
+  nextframe();
   sys_set_screen_mode(SYS_SCREEN_MODE_2S6X6);
   sys_set_bg_config(
     2, // background #
@@ -336,8 +401,15 @@ static void card_screen(const char *text) {
   sys_set_bg2_enable(true);
   sys_set_bg3_enable(false);
   sys_set_bgs2_scroll(0x0156 * -6, 0x0156 * 4);
+}
 
+static void card_screen_print(const char *text) {
   // print message...
+  const char *chars =
+    " !\"'<>,-.0123456"
+    "789?ABCDFGHIJKLM"
+    "NOPRSTWabcdefghi"
+    "jklmnoprstuvwxyz";
   int x = 0;
   int y = 0;
   for (int i = 0; text[i]; i++) {
@@ -365,13 +437,20 @@ static void card_screen(const char *text) {
   }
 
   g_load_palette = 2; // load colors
+}
 
+static void card_screen(const char *message) {
+  card_screen_setup();
+  card_screen_print(message);
   // wait for keypress
-  while (g_inputdown) sys_nextframe();
+  while (g_inputdown) nextframe();
   // prevent spamming
-  for (int i = 0; i < 20; i++) sys_nextframe();
-  while (!(g_inputdown & SYS_INPUT_A)) sys_nextframe();
-  while (g_inputdown) sys_nextframe();
+  for (int i = 0; i < 20; i++) nextframe();
+  while (!(
+    (g_inputdown & SYS_INPUT_A) ||
+    (g_inputdown & SYS_INPUT_ST)
+  )) nextframe();
+  while (g_inputdown) nextframe();
   sfx_click();
 }
 
@@ -404,10 +483,11 @@ static void move_player(int x, int y, int dir) {
 static void restore_game_state() {
   sys_set_vblank(irq_vblank_game);
   g_viewport = find_player_level();
-  set_options(g_options);
+  set_options(g_options, true);
   sys_nextframe();
 }
 
+static void card_options();
 static bool fire_undo_next_frame = false;
 static void play_game() {
   load_world();
@@ -422,10 +502,13 @@ static void play_game() {
   sys_set_screen_enable(true);
 
   snd_set_master_volume(16);
-  snd_set_song_volume(12);
-  snd_set_sfx_volume(16);
+  snd_set_song_volume(g_song_volume);
+  snd_set_sfx_volume(g_sfx_volume);
   snd_load_song(BINADDR(song1_gvsong), 0);
 
+  int dir = -1;
+  int last_dir = -1;
+  int repeat_timer = -1;
   while (1) {
     nextframe();
 
@@ -438,15 +521,45 @@ static void play_game() {
       undo_fire();
       g_viewport = find_player_level();
       snap_player();
+    } else if (g_inputhit & SYS_INPUT_A) {
+      // can we checkpoint here?
+      if (is_checkpoint(world_at(g_markers[0].x, g_markers[0].y))) {
+        sfx_checkpoint();
+        checkpoint_save();
+      }
+    } else if (g_inputhit & SYS_INPUT_SE) {
+      if (checkpoint_restore()) {
+        sfx_forward();
+        g_viewport = find_player_level();
+        snap_player();
+      } else
+        sfx_bump(); // failed to restore checkpoint
+    } else if (g_inputhit & SYS_INPUT_ST) {
+      card_options();
+      restore_game_state();
     } else {
-      int dir = -1;
       g_dirty = 0;
-      if (g_inputhit & SYS_INPUT_SE) set_options(g_options + 2);
-      if (g_inputhit & SYS_INPUT_U){ dir = 0; }
-      if (g_inputhit & SYS_INPUT_R){ dir = 1; }
-      if (g_inputhit & SYS_INPUT_D){ dir = 2; }
-      if (g_inputhit & SYS_INPUT_L){ dir = 3; }
+      dir = -1;
+      if (g_inputdown & SYS_INPUT_U) dir = 0;
+      if (g_inputdown & SYS_INPUT_R) dir = 1;
+      if (g_inputdown & SYS_INPUT_D) dir = 2;
+      if (g_inputdown & SYS_INPUT_L) dir = 3;
+
+      // fire repeat inputs
+      bool hit = false;
       if (dir >= 0 && dir < 4) {
+        if (last_dir != dir)
+          hit = true;
+        else if (repeat_timer > 0) {
+          repeat_timer--;
+          if (repeat_timer == 0)
+            hit = true;
+        }
+      }
+      last_dir = dir;
+
+      if (hit) {
+        repeat_timer = 11;
         int nx = g_markers[0].x;
         int ny = g_markers[0].y;
         advance_pt(&nx, &ny, dir, 1);
@@ -641,6 +754,7 @@ static void card_screen_from_marker(int marker) {
         snd_set_master_volume(i);
       snd_load_song(BINADDR(song1_gvsong), 2); // silence
       snd_set_master_volume(16);
+      sfx_end();
       card_screen(
         "                    \n"
         "                    \n"
@@ -737,10 +851,193 @@ static void card_screen_from_marker(int marker) {
   card_screen(message);
 }
 
+// map 0-10 -> 0-16
+static const u16 volume_map_fwd[]  = {0, 1, 2, 3, 5, 6, 8, 10, 12, 14, 16};
+// map 0-16 -> 0-10
+static const u16 volume_map_back[] = {0, 1, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10};
+
+static void card_options_volume(char *msg, int volume) {
+  volume = volume_map_back[volume];
+  if (volume == 0) {
+    msg[0] = 'O';
+    msg[1] = 'f';
+    msg[2] = 'f';
+  } else if (volume == 10) {
+    msg[0] = 'M';
+    msg[1] = 'a';
+    msg[2] = 'x';
+  } else { // 1-9
+    msg[0] = ' ';
+    msg[1] = '0' + volume;
+    msg[2] = ' ';
+  }
+}
+
+static void card_options() {
+  card_screen_setup();
+
+  char message[300];
+  const char *template =
+    "                    \n"
+    " Graphics           \n"
+    "                    \n"
+    " Border             \n"
+    "                    \n"
+    " Scrolling          \n"
+    "                    \n"
+    " Music              \n"
+    "                    \n"
+    " Sound Fx           \n"
+    "                    \n"
+    "                    \n"
+    "  Start to return   \n"
+    "                    \n";
+
+  int menu = 0;
+  bool refresh = true;
+  while (1) {
+    if (refresh) {
+      sfx_click();
+      refresh = false;
+      // hide sprites
+      for (int i = 0; i < 3; i++) {
+        g_sprites[i].origin.x = 240;
+        g_sprites[i].origin.y = 160;
+        ani_step(i);
+      }
+      int i;
+      for (i = 0; template[i]; i++)
+        message[i] = template[i];
+      message[i] = 0;
+      message[42 * menu + 33] = '<';
+      message[42 * menu + 39] = '>';
+      switch (g_options & OPT_TILESET_MASK) {
+        case 0:
+        case 1:
+          message[35] = 'M';
+          message[36] = 'a';
+          message[37] = 'x';
+          break;
+        case 2:
+        case 3:
+          message[35] = 'S';
+          message[36] = 't';
+          message[37] = 'd';
+          break;
+      }
+      if (opt_hide_borders()) {
+        message[77] = 'O';
+        message[78] = 'n';
+        message[79] = ' ';
+      } else {
+        message[77] = 'O';
+        message[78] = 'f';
+        message[79] = 'f';
+      }
+      if (opt_snap_scroll()) {
+        message[119] = 'O';
+        message[120] = 'f';
+        message[121] = 'f';
+      } else {
+        message[119] = 'O';
+        message[120] = 'n';
+        message[121] = ' ';
+      }
+      card_options_volume(&message[161], g_song_volume);
+      card_options_volume(&message[203], g_sfx_volume);
+      card_screen_print(message);
+    }
+    nextframe();
+    if (g_inputhit & SYS_INPUT_U) {
+      if (menu > 0) {
+        menu--;
+        refresh = true;
+      }
+    } else if (g_inputhit & SYS_INPUT_D) {
+      if (menu < 4) {
+        menu++;
+        refresh = true;
+      }
+    } else if (g_inputhit & SYS_INPUT_ST) {
+      sfx_click();
+      return;
+    } else if (menu == 0) { // Graphics
+      int d = 0;
+      if (
+        (g_inputhit & SYS_INPUT_L) ||
+        (g_inputhit & SYS_INPUT_R)
+      ) {
+        d = 2;
+      }
+      if (d > 0) {
+        int next =
+          (g_options & ~OPT_TILESET_MASK) |
+          (((g_options & OPT_TILESET_MASK) + d) & OPT_TILESET_MASK);
+        set_options(next, false);
+        card_screen_setup();
+        refresh = true;
+      }
+    } else if (menu == 1) { // Border
+      if (
+        (g_inputhit & SYS_INPUT_L) ||
+        (g_inputhit & SYS_INPUT_R)
+      ) {
+        set_options(g_options ^ OPT_HIDE_BORDERS, false);
+        card_screen_setup();
+        refresh = true;
+      }
+    } else if (menu == 2) { // Scrolling
+      if (
+        (g_inputhit & SYS_INPUT_L) ||
+        (g_inputhit & SYS_INPUT_R)
+      ) {
+        set_options(g_options ^ OPT_SNAP_SCROLL, false);
+        card_screen_setup();
+        refresh = true;
+      }
+    } else if (menu == 3) { // Music
+      if (g_inputhit & SYS_INPUT_L) {
+        if (g_song_volume > 0) {
+          g_song_volume = volume_map_fwd[volume_map_back[g_song_volume] - 1];
+          snd_set_song_volume(g_song_volume);
+          refresh = true;
+        } else
+          sfx_bump();
+      }
+      if (g_inputhit & SYS_INPUT_R) {
+        if (g_song_volume < 16) {
+          g_song_volume = volume_map_fwd[volume_map_back[g_song_volume] + 1];
+          snd_set_song_volume(g_song_volume);
+          refresh = true;
+        } else
+          sfx_bump();
+      }
+    } else if (menu == 4) { // Sound Fx
+      if (g_inputhit & SYS_INPUT_L) {
+        if (g_sfx_volume > 0) {
+          g_sfx_volume = volume_map_fwd[volume_map_back[g_sfx_volume] - 1];
+          snd_set_sfx_volume(g_sfx_volume);
+          sfx_push();
+          refresh = true;
+        } else
+          sfx_bump();
+      }
+      if (g_inputhit & SYS_INPUT_R) {
+        if (g_sfx_volume < 16) {
+          g_sfx_volume = volume_map_fwd[volume_map_back[g_sfx_volume] + 1];
+          snd_set_sfx_volume(g_sfx_volume);
+          sfx_push();
+          refresh = true;
+        } else
+          sfx_bump();
+      }
+    }
+  }
+}
+
 void gvmain() {
   sys_init();
   title_screen();
-  sys_copy_tiles(1, 0, BINADDR(font_hd_bin), BINSIZE(font_hd_bin));
   card_screen(
     "                    \n"
     "                    \n"

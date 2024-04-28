@@ -12,6 +12,7 @@
 
 struct undo_st g_undo SECTION_EWRAM = {0};
 int g_dirty = 0;
+int g_checkpoint = -1;
 
 static void undo_push(u32 entry) {
   g_undo.entries[g_undo.head] = entry;
@@ -19,6 +20,8 @@ static void undo_push(u32 entry) {
   g_undo.head &= UNDO_SIZE - 1;
   if (g_undo.head == g_undo.tail) {
     g_undo.tail++;
+    if (g_undo.tail > g_checkpoint)
+      g_checkpoint = -1; // out of memory, lost checkpoint :-(
     g_undo.tail &= UNDO_SIZE - 1;
   }
 }
@@ -56,6 +59,8 @@ void undo_fire() {
   final = (final + 1) & (UNDO_SIZE - 1);
   int here = g_undo.head;
   while (here != final) {
+    if (here == g_checkpoint)
+      g_checkpoint = -1; // remove checkpoint if undo prior to it
     here--;
     here &= UNDO_SIZE - 1;
 
@@ -95,6 +100,18 @@ void undo_fire() {
     }
   }
   g_undo.head = here;
+}
+
+void checkpoint_save() {
+  g_checkpoint = g_undo.head;
+}
+
+bool checkpoint_restore() {
+  if (g_checkpoint < 0)
+    return false;
+  while (g_undo.head != g_checkpoint)
+    undo_fire();
+  return true;
 }
 
 void write_logic(int x, int y, int data) {

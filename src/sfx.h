@@ -14,3 +14,5 @@ void sfx_forward();
 void sfx_bump();
 void sfx_splash();
 void sfx_click();
+void sfx_end();
+void sfx_checkpoint();

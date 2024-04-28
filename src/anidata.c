@@ -122,3 +122,32 @@ const u16 ani_cat[] = {
   TILEXY(0, 96),
   STOP()
 };
+
+const u16 ani_start1[] = {
+  RESET(),
+  SIZE_64x32(),
+  TILEXY(0, 192),
+  STOP()
+};
+
+const u16 ani_start2[] = {
+  RESET(),
+  SIZE_64x32(),
+  TILEXY(64, 192),
+  STOP()
+};
+
+const u16 ani_credits1[] = {
+  RESET(),
+  SIZE_64x32(),
+  TILEXY(0, 224),
+  STOP()
+};
+
+const u16 ani_credits2[] = {
+  RESET(),
+  SIZE_64x32(),
+  TILEXY(64, 224),
+  STOP()
+};
+

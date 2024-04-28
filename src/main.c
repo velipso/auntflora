@@ -509,18 +509,31 @@ static void play_game() {
   int dir = -1;
   int last_dir = -1;
   int repeat_timer = -1;
+  bool last_undo = false;
   while (1) {
     nextframe();
 
     if (
       fire_undo_next_frame ||
-      (g_inputhit & SYS_INPUT_B)
+      (g_inputdown & SYS_INPUT_B)
     ) {
-      // undo
-      fire_undo_next_frame = false;
-      undo_fire();
-      g_viewport = find_player_level();
-      snap_player();
+      bool hit = false;
+      if (!fire_undo_next_frame && last_undo && repeat_timer > 0) {
+        repeat_timer--;
+        if (repeat_timer == 0)
+          hit = true;
+      } else
+        hit = true;
+      last_undo = true;
+      if (hit) {
+        repeat_timer = 11;
+        fire_undo_next_frame = false;
+        if (undo_fire()) {
+          g_viewport = find_player_level();
+          snap_player();
+        } else
+          sfx_bump(); // failed to undo
+      }
     } else if (g_inputhit & SYS_INPUT_A) {
       // can we checkpoint here?
       if (is_checkpoint(world_at(g_markers[0].x, g_markers[0].y))) {

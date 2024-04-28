@@ -20,7 +20,7 @@ static void undo_push(u32 entry) {
   g_undo.head &= UNDO_SIZE - 1;
   if (g_undo.head == g_undo.tail) {
     g_undo.tail++;
-    if (g_undo.tail > g_checkpoint)
+    if (g_undo.tail >= g_checkpoint)
       g_checkpoint = -1; // out of memory, lost checkpoint :-(
     g_undo.tail &= UNDO_SIZE - 1;
   }
@@ -35,10 +35,10 @@ void undo_finish() {
   g_undo.entries[prev] |= 0x80000000;
 }
 
-void undo_fire() {
+bool undo_fire() {
   if (g_undo.head == g_undo.tail) {
     // can't rewind further, out of undo data!
-    return;
+    return false;
   }
   // rewind head until finalized entry is found
   int final = (g_undo.head - 1) & (UNDO_SIZE - 1);
@@ -51,7 +51,7 @@ void undo_fire() {
     }
     if (final == g_undo.tail) {
       // can't rewind further, out of undo data!
-      return;
+      return false;
     }
     final--;
     final &= UNDO_SIZE - 1;
@@ -100,6 +100,7 @@ void undo_fire() {
     }
   }
   g_undo.head = here;
+  return true;
 }
 
 void checkpoint_save() {

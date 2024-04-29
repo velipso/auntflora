@@ -8,7 +8,15 @@
 #pragma once
 #include "sys.h"
 
-extern struct { int x; int y; int dir; } g_pushers[32];
+#define PUSHERS_SIZE  32
+
+struct pusher_st {
+  int x;
+  int y;
+  int dir;
+};
+
+extern struct pusher_st g_pushers[PUSHERS_SIZE];
 extern int g_pushers_size;
 
 static inline void pushers_reset() {

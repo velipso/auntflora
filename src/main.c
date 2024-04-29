@@ -1060,7 +1060,7 @@ void gvmain() {
     "                    \n"
     "                    \n"
     "                    \n"
-    " D pad to move      \n"
+    " D-pad to move      \n"
     " A to action        \n"
     " B to undo          \n"
     "                    \n"

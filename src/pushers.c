@@ -5,19 +5,14 @@
 // SPDX-License-Identifier: 0BSD
 //
 
-#include "sys.h"
+#include "pushers.h"
 #include "main.h"
 #include "util.h"
 #include "cellinfo.h"
 #include "sfx.h"
 #include "undo.h"
 
-#define PUSHERS_SIZE  32
-struct {
-  int x;
-  int y;
-  int dir;
-} g_pushers[PUSHERS_SIZE];
+struct pusher_st g_pushers[PUSHERS_SIZE];
 int g_pushers_size;
 
 #if 0

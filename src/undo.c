@@ -20,7 +20,7 @@ static void undo_push(u32 entry) {
   g_undo.head &= UNDO_SIZE - 1;
   if (g_undo.head == g_undo.tail) {
     g_undo.tail++;
-    if (g_undo.tail >= g_checkpoint)
+    if (g_undo.tail == g_checkpoint)
       g_checkpoint = -1; // out of memory, lost checkpoint :-(
     g_undo.tail &= UNDO_SIZE - 1;
   }

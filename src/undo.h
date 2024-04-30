@@ -10,29 +10,9 @@
 
 #define UNDO_SIZE  (1 << 13)
 
-extern struct undo_st {
-  // F T YYYYYYYYY XXXXXXXXX PPPP PPPP PPPP
-  // | | \_______/ \_______/ \____________/
-  // | |     |         |            |
-  // | |     |         |            +------- payload (12 bits)
-  // | |     |         +-------------------- X position (0-511)
-  // | |     +------------------------------ Y position (0-511)
-  // | +------------------------------------ type, 0 = logic write, 1 = player write
-  // +-------------------------------------- final entry?
-  // logic write:
-  //   - 6 bits new data
-  //   - 6 bits old data
-  // player write:
-  //   - 2 bits new direction
-  //   - 2 bits old direction
-  //   - 8 bits message flag (0-254 message activated, 255 no message)
-  u32 entries[UNDO_SIZE];
-  u16 head;
-  u16 tail;
-} g_undo;
 extern int g_dirty;
-extern int g_checkpoint;
 
+void undo_init();
 void undo_finish();
 bool undo_fire();
 void checkpoint_save();

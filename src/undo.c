@@ -10,9 +10,34 @@
 #include "util.h"
 #include "cellinfo.h"
 
-struct undo_st g_undo SECTION_EWRAM = {0};
 int g_dirty = 0;
-int g_checkpoint = -1;
+static struct {
+  // F T YYYYYYYYY XXXXXXXXX PPPP PPPP PPPP
+  // | | \_______/ \_______/ \____________/
+  // | |     |         |            |
+  // | |     |         |            +------- payload (12 bits)
+  // | |     |         +-------------------- X position (0-511)
+  // | |     +------------------------------ Y position (0-511)
+  // | +------------------------------------ type, 0 = logic write, 1 = player write
+  // +-------------------------------------- final entry?
+  // logic write:
+  //   - 6 bits new data
+  //   - 6 bits old data
+  // player write:
+  //   - 2 bits new direction
+  //   - 2 bits old direction
+  //   - 8 bits message flag (0-254 message activated, 255 no message)
+  u32 entries[UNDO_SIZE];
+  u16 head;
+  u16 tail;
+} g_undo SECTION_EWRAM = {0};
+static int g_checkpoint = -1;
+
+void undo_init() {
+  g_undo.head = 1;
+  g_undo.tail = 0;
+  g_undo.entries[0] = 0x80000000;
+}
 
 static void undo_push(u32 entry) {
   g_undo.entries[g_undo.head] = entry;
@@ -20,9 +45,9 @@ static void undo_push(u32 entry) {
   g_undo.head &= UNDO_SIZE - 1;
   if (g_undo.head == g_undo.tail) {
     g_undo.tail++;
+    g_undo.tail &= UNDO_SIZE - 1;
     if (g_undo.tail == g_checkpoint)
       g_checkpoint = -1; // out of memory, lost checkpoint :-(
-    g_undo.tail &= UNDO_SIZE - 1;
   }
 }
 

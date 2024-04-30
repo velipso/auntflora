@@ -257,9 +257,7 @@ static void load_world() {
   }
 
   // initialize undo
-  g_undo.head = 1;
-  g_undo.tail = 0;
-  g_undo.entries[0] = 0x80000000;
+  undo_init();
 }
 
 void nextframe() {

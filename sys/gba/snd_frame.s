@@ -635,12 +635,16 @@ env_channel_continue:
     str   r0, [rChannelPtr, #SND_CHANNEL_STATE]
     ldr   r0, [rChannelPtr, #SND_CHANNEL_INST_BASE]
     ldrh  r0, [r0, #SND_SONGINST_WAVE]
+    // phase resets if wave missing continue flag OR note was off OR note was PCM
     ands  r0, #0x8000
-    cmpne r1, #0
     mov   r0, #0
-    // phase continues if wave has continue flag AND note was already on
-    streq r0, [rChannelPtr, #SND_CHANNEL_PHASE]
-    str   r0, [rChannelPtr, #SND_CHANNEL_ENV_VOLUME_INDEX]
+    beq   1f
+    cmp   r1, #0
+    beq   1f
+    tst   r2, #0x80
+    beq   2f
+1:  str   r0, [rChannelPtr, #SND_CHANNEL_PHASE]
+2:  str   r0, [rChannelPtr, #SND_CHANNEL_ENV_VOLUME_INDEX]
     str   r0, [rChannelPtr, #SND_CHANNEL_ENV_PITCH_INDEX]
     lsls  r0, r2, #pitchDivisionBits
     str   r0, [rChannelPtr, #SND_CHANNEL_BASE_PITCH]
@@ -1030,15 +1034,18 @@ done_effect:
     ldr   r5, [rChannelPtr, #SND_CHANNEL_STATE]
     movs  r4, #2
     str   r4, [rChannelPtr, #SND_CHANNEL_STATE]
-
     ldr   r4, [rChannelPtr, #SND_CHANNEL_INST_BASE]
     ldrh  r4, [r4, #SND_SONGINST_WAVE]
+    // phase resets if wave missing continue flag OR note was off OR note was PCM
     ands  r4, #0x8000
-    cmpne r5, #0
     mov   r4, #0
-    // phase continues if wave has continue flag AND note was already on
-    streq r4, [rChannelPtr, #SND_CHANNEL_PHASE]
-    str   r4, [rChannelPtr, #SND_CHANNEL_ENV_VOLUME_INDEX]
+    beq   1f
+    cmp   r5, #0
+    beq   1f
+    tst   rNote, #0x80
+    beq   2f
+1:  str   r4, [rChannelPtr, #SND_CHANNEL_PHASE]
+2:  str   r4, [rChannelPtr, #SND_CHANNEL_ENV_VOLUME_INDEX]
     str   r4, [rChannelPtr, #SND_CHANNEL_ENV_PITCH_INDEX]
     lsls  r4, rNote, #pitchDivisionBits
     str   r4, [rChannelPtr, #SND_CHANNEL_BASE_PITCH]

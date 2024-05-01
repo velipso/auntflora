@@ -457,9 +457,15 @@ static void move_player(int x, int y, int dir) {
       break;
     }
     if (m == 12 && g_markers[m].x == x && g_markers[m].y == y + 1) {
-      // annoyingly, the Parler marker is two blocks high :-( so special hack here
+      // annoyingly, the Parlor marker is two blocks high :-( so special hack here
       // to handle it
       hit_marker = 9;
+      break;
+    }
+    if (m == 4 && g_markers[m].x == x && (g_markers[m].y == y + 1 || g_markers[m].y == y + 2)) {
+      // annoyingly, the Kitchen marker is THREE blocks high :-( so special hack here
+      // to handle it
+      hit_marker = 1;
       break;
     }
   }

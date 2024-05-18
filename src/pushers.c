@@ -20,9 +20,9 @@ int g_pushers_size;
 #include "anidata.h"
 static void blink_tile(int x, int y) {
   for (int blink = 0; blink < 4; blink++) {
-    g_sprites[3].pc = (blink & 1) ? NULL : ani_cat;
-    g_sprites[3].origin.x = (x - g_viewport.wx) * 12 - 32;
-    g_sprites[3].origin.y = (y - g_viewport.wy) * 12 - 18;
+    g_sprites[4].pc = (blink & 1) ? NULL : ani_cat;
+    g_sprites[4].origin.x = (x - g_viewport.wx) * 12 - 32;
+    g_sprites[4].origin.y = (y - g_viewport.wy) * 12 - 18;
     nextframe();nextframe();
   }
 }
@@ -34,13 +34,13 @@ static void blink_tile(int x, int y) {
 #include "ani.h"
 #include "anidata.h"
 static void pushers_mark() {
-  for (int i = 0; i < 128 - 3; i++) {
+  for (int i = 0; i < 128 - 4; i++) {
     if (i < g_pushers_size) {
-      g_sprites[i + 3].pc = ani_cat;
-      g_sprites[i + 3].origin.x = (g_pushers[i].x - g_viewport.wx) * 12 - 32;
-      g_sprites[i + 3].origin.y = (g_pushers[i].y - g_viewport.wy) * 12 - 18;
+      g_sprites[i + 4].pc = ani_cat;
+      g_sprites[i + 4].origin.x = (g_pushers[i].x - g_viewport.wx) * 12 - 32;
+      g_sprites[i + 4].origin.y = (g_pushers[i].y - g_viewport.wy) * 12 - 18;
     } else {
-      g_sprites[i + 3].pc = NULL;
+      g_sprites[i + 4].pc = NULL;
     }
   }
   nextframe();

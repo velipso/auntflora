@@ -29,6 +29,7 @@ int g_total_steps = 0;
 static int g_load_palette = 0;
 static int g_song_volume = 6;
 static int g_sfx_volume = 16;
+static int g_show_counter = 0;
 static const u8 zero[64] = {0};
 
 static void SECTION_IWRAM_ARM irq_vblank_title() {
@@ -150,10 +151,10 @@ static void set_options(int opt, bool load_colors) {
 void set_player_ani_dir(int dir) {
   g_playerdir = dir;
   switch (dir) {
-    case 0: g_sprites[0].pc = ani_player_u; break;
-    case 1: g_sprites[0].pc = ani_player_r; break;
-    case 2: g_sprites[0].pc = ani_player_d; break;
-    case 3: g_sprites[0].pc = ani_player_l; break;
+    case 0: g_sprites[1].pc = ani_player_u; break;
+    case 1: g_sprites[1].pc = ani_player_r; break;
+    case 2: g_sprites[1].pc = ani_player_d; break;
+    case 3: g_sprites[1].pc = ani_player_l; break;
   }
 }
 
@@ -171,20 +172,27 @@ static struct viewport_st find_player_level() {
 }
 
 static void snap_player() {
-  if (opt_standard_def()) {
-    g_sprites[0].origin.x = (g_markers[0].x - g_viewport.wx) * 10 - 8;
-    g_sprites[0].origin.y = (g_markers[0].y - g_viewport.wy) * 10 - 3;
-    g_sprites[1].origin.x = (g_markers[1].x - g_viewport.wx) * 10 - 8;
-    g_sprites[1].origin.y = (g_markers[1].y - g_viewport.wy) * 10 - 3;
-    g_sprites[2].origin.x = (g_markers[2].x - g_viewport.wx) * 10 - 8;
-    g_sprites[2].origin.y = (g_markers[2].y - g_viewport.wy) * 10 - 3;
+  if (g_show_counter) {
+    g_sprites[0].origin.x = 240 - 64;
+    g_sprites[0].origin.y = 160 - 11;
   } else {
-    g_sprites[0].origin.x = (g_markers[0].x - g_viewport.wx) * 12 - 32;
-    g_sprites[0].origin.y = (g_markers[0].y - g_viewport.wy) * 12 - 18;
-    g_sprites[1].origin.x = (g_markers[1].x - g_viewport.wx) * 12 - 32;
-    g_sprites[1].origin.y = (g_markers[1].y - g_viewport.wy) * 12 - 18;
-    g_sprites[2].origin.x = (g_markers[2].x - g_viewport.wx) * 12 - 32;
-    g_sprites[2].origin.y = (g_markers[2].y - g_viewport.wy) * 12 - 18;
+    g_sprites[0].origin.x = 240;
+    g_sprites[0].origin.y = 160;
+  }
+  if (opt_standard_def()) {
+    g_sprites[1].origin.x = (g_markers[0].x - g_viewport.wx) * 10 - 8;
+    g_sprites[1].origin.y = (g_markers[0].y - g_viewport.wy) * 10 - 3;
+    g_sprites[2].origin.x = (g_markers[1].x - g_viewport.wx) * 10 - 8;
+    g_sprites[2].origin.y = (g_markers[1].y - g_viewport.wy) * 10 - 3;
+    g_sprites[3].origin.x = (g_markers[2].x - g_viewport.wx) * 10 - 8;
+    g_sprites[3].origin.y = (g_markers[2].y - g_viewport.wy) * 10 - 3;
+  } else {
+    g_sprites[1].origin.x = (g_markers[0].x - g_viewport.wx) * 12 - 32;
+    g_sprites[1].origin.y = (g_markers[0].y - g_viewport.wy) * 12 - 18;
+    g_sprites[2].origin.x = (g_markers[1].x - g_viewport.wx) * 12 - 32;
+    g_sprites[2].origin.y = (g_markers[1].y - g_viewport.wy) * 12 - 18;
+    g_sprites[3].origin.x = (g_markers[2].x - g_viewport.wx) * 12 - 32;
+    g_sprites[3].origin.y = (g_markers[2].y - g_viewport.wy) * 12 - 18;
   }
 }
 
@@ -448,6 +456,7 @@ static void card_screen(const char *message) {
 
 static void card_screen_from_marker(int marker);
 static void restore_game_state();
+static void render_total_steps();
 static void move_player(int x, int y, int dir) {
   // check for messages or end
   int hit_marker = -1;
@@ -472,6 +481,7 @@ static void move_player(int x, int y, int dir) {
   if (hit_marker >= 0 && g_seen_marker[hit_marker])
     hit_marker = -1;
   write_player(x, y, dir, hit_marker);
+  render_total_steps();
   if (hit_marker >= 0) {
     card_screen_from_marker(hit_marker);
     restore_game_state();
@@ -485,14 +495,162 @@ static void restore_game_state() {
   sys_nextframe();
 }
 
+static void render_total_steps() {
+  static int last_render = -1;
+  static int white_pix = -1;
+  static int black_pix = -1;
+
+  if (white_pix < 0) {
+    const u16 *pal = BINADDR(palette_bin);
+    int size = BINSIZE(palette_bin) / 2;
+    for (int i = 1; i < size; i++) {
+      if (pal[i] == 0)
+        black_pix = i;
+      else if (pal[i] == 0x7fff)
+        white_pix = i;
+    }
+  }
+
+  if (last_render == g_total_steps)
+    return;
+  last_render = g_total_steps;
+
+  const u8 pics[] = {
+    0,1,1,1,2,0,
+    1,1,2,1,1,2,
+    1,1,2,1,1,2,
+    1,1,2,1,1,2,
+    1,1,2,1,1,2,
+    0,1,1,1,2,2,
+    0,0,2,2,2,0,
+    0,0,0,0,0,0,
+
+    0,0,1,1,2,0,
+    0,1,1,1,2,0,
+    0,0,1,1,2,0,
+    0,0,1,1,2,0,
+    0,0,1,1,2,0,
+    0,1,1,1,1,2,
+    0,0,2,2,2,2,
+    0,0,0,0,0,0,
+
+    0,1,1,1,2,0,
+    1,1,2,1,1,2,
+    0,2,2,1,1,2,
+    0,0,1,1,2,0,
+    0,1,1,2,2,0,
+    1,1,1,1,1,2,
+    0,2,2,2,2,2,
+    0,0,0,0,0,0,
+
+    1,1,1,1,2,0,
+    0,2,2,1,1,2,
+    0,0,1,1,2,2,
+    0,0,0,1,1,2,
+    0,0,0,1,1,2,
+    1,1,1,1,2,2,
+    0,2,2,2,2,0,
+    0,0,0,0,0,0,
+
+    1,1,2,1,1,2,
+    1,1,2,1,1,2,
+    1,1,1,1,1,2,
+    0,2,2,1,1,2,
+    0,0,0,1,1,2,
+    0,0,0,1,1,2,
+    0,0,0,0,2,2,
+    0,0,0,0,0,0,
+
+    1,1,1,1,1,2,
+    1,1,2,2,2,2,
+    1,1,1,1,2,0,
+    0,2,2,1,1,2,
+    0,0,0,1,1,2,
+    1,1,1,1,2,2,
+    0,2,2,2,2,0,
+    0,0,0,0,0,0,
+
+    0,1,1,1,1,2,
+    1,1,2,2,2,2,
+    1,1,1,1,2,0,
+    1,1,2,1,1,2,
+    1,1,2,1,1,2,
+    0,1,1,1,2,2,
+    0,0,2,2,2,0,
+    0,0,0,0,0,0,
+
+    1,1,1,1,1,2,
+    0,2,2,1,1,2,
+    0,0,0,1,1,2,
+    0,0,1,1,2,2,
+    0,0,1,1,2,0,
+    0,0,1,1,2,0,
+    0,0,0,2,2,0,
+    0,0,0,0,0,0,
+
+    0,1,1,1,2,0,
+    1,1,2,1,1,2,
+    0,1,1,1,2,2,
+    1,1,2,1,1,2,
+    1,1,2,1,1,2,
+    0,1,1,1,2,2,
+    0,0,2,2,2,0,
+    0,0,0,0,0,0,
+
+    0,1,1,1,1,2,
+    1,1,2,1,1,2,
+    0,1,1,1,1,2,
+    0,0,2,1,1,2,
+    0,0,0,1,1,2,
+    0,0,0,1,1,2,
+    0,0,0,0,2,2,
+    0,0,0,0,0,0,
+  };
+  int digits[] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
+  int i = 9;
+  int n = g_total_steps;
+  if (n == 0)
+    digits[i] = 0;
+  else {
+    do {
+      int d = n / 10;
+      int r = n - d * 10;
+      n = d;
+      if (i >= 0)
+        digits[i] = r;
+      i--;
+    } while (n > 0);
+  }
+  for (int dig = 0; dig < 10; dig++) {
+    const u8 *pic = digits[dig] < 0 ? NULL : &pics[digits[dig] * 48];
+    for (int py = 0; py < 8; py++) {
+      for (int px = 0; px < 6; px += 2) {
+        int c = 0;
+        if (pic) {
+          switch (pic[px + py * 6]) {
+            case 1: c = white_pix; break;
+            case 2: c = black_pix; break;
+          }
+          switch (pic[px + py * 6 + 1]) {
+            case 1: c |= white_pix << 8; break;
+            case 2: c |= black_pix << 8; break;
+          }
+        }
+        sys_pset_obj(dig * 6 + px, 160 + py, c);
+      }
+    }
+  }
+}
+
 static void card_options();
 static bool fire_undo_next_frame = false;
 static void play_game() {
   load_world();
 
-  g_sprites[0].pc = ani_player_l;
-  g_sprites[1].pc = ani_aunt;
-  g_sprites[2].pc = ani_cat;
+  g_sprites[0].pc = ani_counter;
+  g_sprites[1].pc = ani_player_l;
+  g_sprites[2].pc = ani_aunt;
+  g_sprites[3].pc = ani_cat;
 
   restore_game_state();
   sys_set_bg2_enable(true);
@@ -512,6 +670,14 @@ static void play_game() {
     nextframe();
 
     if (
+      (g_inputhit & SYS_INPUT_ZL) ||
+      (g_inputhit & SYS_INPUT_ZR)
+    ) {
+      g_show_counter = 1 - g_show_counter;
+      snap_player();
+    }
+
+    if (
       fire_undo_next_frame ||
       (g_inputdown & SYS_INPUT_B)
     ) {
@@ -527,6 +693,7 @@ static void play_game() {
         repeat_timer = 11;
         fire_undo_next_frame = false;
         if (undo_fire()) {
+          render_total_steps();
           g_viewport = find_player_level();
           snap_player();
         } else
@@ -544,6 +711,7 @@ static void play_game() {
     } else if (g_inputhit & SYS_INPUT_SE) {
       if (checkpoint_restore()) {
         sfx_forward();
+        render_total_steps();
         g_viewport = find_player_level();
         snap_player();
       } else
@@ -759,7 +927,7 @@ static void card_screen_from_marker(int marker) {
     case 17: M(5, "     The Attic      \n"); break;
     case 18: // beat game!
       // hide sprites
-      for (int i = 0; i < 3; i++) {
+      for (int i = 0; i < 4; i++) {
         g_sprites[i].origin.x = 240;
         g_sprites[i].origin.y = 160;
         ani_step(i);
@@ -856,7 +1024,7 @@ static void card_screen_from_marker(int marker) {
   }
   #undef M
   // hide sprites
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < 4; i++) {
     g_sprites[i].origin.x = 240;
     g_sprites[i].origin.y = 160;
     ani_step(i);
@@ -915,7 +1083,7 @@ static void card_options() {
         sfx_click();
       refresh = 0;
       // hide sprites
-      for (int i = 0; i < 3; i++) {
+      for (int i = 0; i < 4; i++) {
         g_sprites[i].origin.x = 240;
         g_sprites[i].origin.y = 160;
         ani_step(i);

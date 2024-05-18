@@ -151,3 +151,9 @@ const u16 ani_credits2[] = {
   STOP()
 };
 
+const u16 ani_counter[] = {
+  RESET(),
+  SIZE_64x32(),
+  TILEXY(0, 160),
+  STOP()
+};

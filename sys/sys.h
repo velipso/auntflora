@@ -93,6 +93,15 @@ extern void memset8(void *dest, u32 data, u32 bytecount);
 
 #define sys_pset_1f(x, y, c)  ((u16 *)0x06000000)[(x) + (y) * 240] = (c)
 
+static inline void sys_pset_obj(int x, int y, u16 c) {
+  int tx = x >> 3;
+  int ty = y >> 3;
+  int sx = x & 7;
+  int sy = y & 7;
+  u16 *obj = (u16 *)0x06010000;
+  obj[((tx + ty * 16) * 64 + sx + sy * 8) >> 1] = c;
+}
+
 static inline void sys_set_bg_config(
   i32 bgn,       // 0-3
   i32 priority,  // 0 (front) - 3 (back)
@@ -180,7 +189,8 @@ void memset32(u8 *dest, u32 data, u32 bytecount);
 void memset16(u8 *dest, u32 data, u32 bytecount);
 void memset8(u8 *dest, u32 data, u32 bytecount);
 
-void sys_pset_1f(i32 x, i32 y, u16 color);
+void sys_pset_1f(int x, int y, u16 color);
+void sys_pset_obj(int x, int y, u16 color);
 void sys_set_bg_config(
   i32 bgn,       // 0-3
   i32 priority,  // 0 (front) - 3 (back)

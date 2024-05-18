@@ -18,3 +18,4 @@ extern const u16 ani_start1[];
 extern const u16 ani_start2[];
 extern const u16 ani_credits1[];
 extern const u16 ani_credits2[];
+extern const u16 ani_counter[];

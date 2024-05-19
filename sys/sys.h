@@ -89,7 +89,7 @@ extern void memset16(void *dest, u32 data, u32 bytecount);
 extern void memset8(void *dest, u32 data, u32 bytecount);
 
 #define SECTION_EWRAM      __attribute__((section(".ewram")))
-#define SECTION_IWRAM_ARM  __attribute__((section(".iwram"), target("arm")))
+#define SECTION_IWRAM_ARM  __attribute__((section(".iwram"), target("arm"), noinline))
 
 #define sys_pset_1f(x, y, c)  ((u16 *)0x06000000)[(x) + (y) * 240] = (c)
 

@@ -9,7 +9,7 @@ permission), so more people are exposed to the game, and as a hackable project f
 
 Enjoy!
 
-My best score for total steps is 1227.
+My best score for total steps is 1213.
 
 Build Instructions
 ------------------

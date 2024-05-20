@@ -9,7 +9,7 @@
 #include "reg.h"
 
 void gfx_init() {
-  REG_DISPCNT = 0x0080;
+  REG_DISPCNT = 0x0080; // turn off screen by default
 }
 
 void gfx_setmode(enum gfx_mode mode) {

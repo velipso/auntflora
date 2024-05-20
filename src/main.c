@@ -90,17 +90,19 @@ static inline bool opt_standard_def() {
 }
 
 static void snap_player();
+static void render_total_steps();
 static void set_options(int opt, bool load_colors) {
   g_load_palette = 1; // load black
   nextframe();
 
   g_options = opt;
-  sys_set_bg2_enable(true);
-  sys_set_bg3_enable(true);
-  sys_set_screen_mode(
+  gfx_showbg2(true);
+  gfx_showbg3(true);
+  gfx_showobj(true);
+  gfx_setmode(
     opt_standard_def()
-      ? SYS_SCREEN_MODE_2S5X5
-      : SYS_SCREEN_MODE_2S6X6
+      ? GFX_MODE_2S5X5
+      : GFX_MODE_2S6X6
   );
   sys_set_bg_config(
     2, // background #
@@ -139,6 +141,7 @@ static void set_options(int opt, bool load_colors) {
   sys_copy_tiles(0, 0, zero, sizeof(zero));
 
   // redraw everything
+  render_total_steps();
   snap_player();
   copy_world_offset();
 
@@ -307,12 +310,14 @@ restart_title_screen:
   sys_set_vblank(irq_vblank_title);
   nextframe();
 
-  sys_set_screen_mode(SYS_SCREEN_MODE_2I);
+  gfx_setmode(GFX_MODE_2I);
+  gfx_showbg2(true);
+  gfx_showobj(true);
   sys_copy_tiles(0, 0, BINADDR(title_bin), BINSIZE(title_bin));
   sys_copy_tiles(4, 0, BINADDR(sprites_hd_bin), BINSIZE(sprites_hd_bin));
   sys_copy_bgpal(0, BINADDR(title_palette_bin), BINSIZE(title_palette_bin));
   sys_copy_spritepal(0, BINADDR(palette_bin), BINSIZE(palette_bin));
-  sys_set_screen_enable(true);
+  gfx_showscreen(true);
 
   // wait for no keys
   while (g_inputdown) nextframe();
@@ -387,7 +392,7 @@ static void card_screen_setup() {
   sys_set_vblank(irq_vblank_game);
   g_load_palette = 1; // load black
   nextframe();
-  sys_set_screen_mode(SYS_SCREEN_MODE_2S6X6);
+  gfx_setmode(GFX_MODE_2S6X6);
   sys_set_bg_config(
     2, // background #
     0, // priority
@@ -398,8 +403,9 @@ static void card_screen_setup() {
     0, // wrap
     SYS_BGS_SIZE_512X512
   );
-  sys_set_bg2_enable(true);
-  sys_set_bg3_enable(false);
+  gfx_showbg2(true);
+  gfx_showbg3(false);
+  gfx_showobj(true);
   sys_set_bgs2_scroll(0x0156 * -6, 0x0156 * 4);
 }
 
@@ -456,7 +462,6 @@ static void card_screen(const char *message) {
 
 static void card_screen_from_marker(int marker);
 static void restore_game_state();
-static void render_total_steps();
 static void move_player(int x, int y, int dir) {
   // check for messages or end
   int hit_marker = -1;
@@ -496,7 +501,6 @@ static void restore_game_state() {
 }
 
 static void render_total_steps() {
-  static int last_render = -1;
   static int white_pix = -1;
   static int black_pix = -1;
 
@@ -510,10 +514,6 @@ static void render_total_steps() {
         white_pix = i;
     }
   }
-
-  if (last_render == g_total_steps)
-    return;
-  last_render = g_total_steps;
 
   const u8 pics[] = {
     0,1,1,1,2,0,
@@ -653,9 +653,10 @@ static void play_game() {
   g_sprites[3].pc = ani_cat;
 
   restore_game_state();
-  sys_set_bg2_enable(true);
-  sys_set_bg3_enable(true);
-  sys_set_screen_enable(true);
+  gfx_showbg2(true);
+  gfx_showbg3(true);
+  gfx_showobj(true);
+  gfx_showscreen(true);
 
   snd_set_master_volume(16);
   snd_set_song_volume(g_song_volume);
@@ -674,6 +675,7 @@ static void play_game() {
       (g_inputhit & SYS_INPUT_ZR)
     ) {
       g_show_counter = 1 - g_show_counter;
+      render_total_steps();
       snap_player();
     }
 

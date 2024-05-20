@@ -6,39 +6,10 @@
 //
 
 #pragma once
-#include <stdint.h>
-#include <stddef.h>
-#include <stdbool.h>
+#include "common.h"
 #include "gba/reg.h"
 
-typedef uint8_t  byte;
-typedef uint8_t  u8;
-typedef uint16_t ushort;
-typedef uint16_t u16;
-typedef uint32_t uint;
-typedef uint32_t u32;
-typedef int8_t   sbyte;
-typedef int8_t   i8;
-typedef int16_t  i16;
-typedef int32_t  i32;
-
-// access binary files generated via Makefile's objbinary
-#define BINFILE(n) \
-  extern const u8 _binary_ ## n ## _start[]; \
-  extern const u8 _binary_ ## n ## _size[]
-#define BINADDR(n)  ((const void *)&_binary_ ## n ## _start)
-#define BINSIZE(n)  ((u32)&_binary_ ## n ## _size)
-
 extern void gvmain();
-
-#define SYS_SCREEN_MODE_4T     0  // 4 text
-#define SYS_SCREEN_MODE_2T1S   1  // 2 text, 1 scaling, arbitrary scaling
-#define SYS_SCREEN_MODE_2S     2  // 2 scaling, arbitrary scaling
-#define SYS_SCREEN_MODE_2S6X6  3  // 2 scaling, targeting 6x6 tiles
-#define SYS_SCREEN_MODE_2S5X5  4  // 2 scaling, targeting 5x5 tiles
-#define SYS_SCREEN_MODE_1F     5  // 1 full-color, arbitrary scaling
-#define SYS_SCREEN_MODE_2F     6  // 2 full-color, arbitrary scaling
-#define SYS_SCREEN_MODE_2I     7  // 2 indexed (256 color)
 
 #define SYS_BGT_SIZE_256X256    0
 #define SYS_BGT_SIZE_512X256    1
@@ -61,13 +32,6 @@ extern void gvmain();
 #define SYS_INPUT_ZL  (1 << 9)
 
 void sys_init();
-void sys_set_sprite_enable(bool enable);
-void sys_set_screen_enable(bool enable);
-void sys_set_bg0_enable(bool enable);
-void sys_set_bg1_enable(bool enable);
-void sys_set_bg2_enable(bool enable);
-void sys_set_bg3_enable(bool enable);
-void sys_set_screen_mode(i32 mode);
 void sys_set_vblank(void (*irq_vblank_handler)());
 void sys_nextframe();
 void snd_load_song(const void *song_base, int sequence);
@@ -80,6 +44,7 @@ bool snd_play_wav(int wav_index, int volume /* 0-16 */, int priority);
 #define RGB15(r, g, b)  (((r) & 0x1f) | (((g) & 0x1f) << 5) | (((b) & 0x1f) << 10))
 
 #if defined(SYS_GBA)
+#include "gba/gba2.h"
 
 extern void memcpy32(void *dest, const void *src, u32 bytecount);
 extern void memcpy16(void *dest, const void *src, u32 bytecount);

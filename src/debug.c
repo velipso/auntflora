@@ -168,8 +168,9 @@ static void SECTION_IWRAM_ARM irq_vblank() {
 void debug_main() {
   sys_init();
   sys_set_vblank(irq_vblank);
-  sys_set_screen_mode(SYS_SCREEN_MODE_1F);
-  sys_set_screen_enable(1);
+  gfx_setmode(GFX_MODE_1F);
+  gfx_showscreen(true);
+  gfx_showbg2(true);
 
   pcolor = RGB15(31, 31, 31);
   print_num(0, 1, 123);
@@ -188,8 +189,9 @@ void debug_main() {
 void debug_print_number(u32 num) {
   sys_init();
   sys_set_vblank(irq_vblank);
-  sys_set_screen_mode(SYS_SCREEN_MODE_1F);
-  sys_set_screen_enable(1);
+  gfx_setmode(GFX_MODE_1F);
+  gfx_showscreen(true);
+  gfx_showbg2(true);
 
   for (int y = 0; y < 160; y++) {
     for (int x = 0; x < 240; x++)

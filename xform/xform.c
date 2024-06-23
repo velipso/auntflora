@@ -52,7 +52,6 @@ static void print_usage() {
     "  copy8x8 <input.png> <palette.bin> <output.bin>\n"
     "    Outputs 8x8 tiles from 8x8 source image\n"
     "\n"
-    "\n"
     "  world <input.json> <bg.bin> <logic.bin> <sprite.bin>\n"
     "    Process Tiled world data\n"
   );

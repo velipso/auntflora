@@ -1,6 +1,6 @@
 //
 // auntflora - Port of Aunt Flora's Mansion to Game Boy Advance
-// by Sean Connelly (@velipso), https://sean.cm
+// by Sean Connelly (@velipso), https://sean.fun
 // Project Home: https://github.com/velipso/auntflora
 // SPDX-License-Identifier: 0BSD
 //
@@ -636,7 +636,7 @@ static void render_total_steps() {
             case 2: c |= black_pix << 8; break;
           }
         }
-        sys_pset_obj(dig * 6 + px, 160 + py, c);
+        gfx_pset2_obj(dig * 6 + px, 160 + py, c);
       }
     }
   }

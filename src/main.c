@@ -31,6 +31,7 @@ static int g_song_volume = 6;
 static int g_sfx_volume = 16;
 static int g_show_counter = 0;
 static const u8 zero[64] = {0};
+static bool g_noclip = false;
 
 static void SECTION_IWRAM_ARM irq_vblank_title() {
   sys_copy_oam(g_oam);
@@ -214,7 +215,7 @@ void copy_world_offset() {
     }
   }
 
-  const u8 *bg = BINADDR(worldbg_bin);
+  const u8 *bg = opt_standard_def() ? BINADDR(worldbg_sd_bin) : BINADDR(worldbg_hd_bin);
   for (int y = 0; y < 32; y++) {
     memcpy8(
       &g_map1[y * 64],
@@ -748,14 +749,16 @@ static void play_game() {
         int ny = g_markers[0].y;
         advance_pt(&nx, &ny, dir, 1);
         u32 cell = world_at(nx, ny);
-        if (!is_solid_static(cell)) {
+        if (g_noclip || !is_solid_static(cell)) {
           pushers_reset();
-          if (is_empty_for_player(cell)) {
-            int bg = worldbg_at(nx, ny) & 0x1f;
-            if (bg >= 6 && bg <= 9)
-              sfx_splash();
-            else
-              sfx_walk();
+          if (g_noclip || is_empty_for_player(cell)) {
+            if (!g_noclip) {
+              int bg = worldbg_at(nx, ny) & 0x1f;
+              if (bg >= 6 && bg <= 9)
+                sfx_splash();
+              else
+                sfx_walk();
+            }
             pushers_find_around_player(dir);
             move_player(nx, ny, dir);
           } else if (is_pushable_by_player(cell, dir)) {

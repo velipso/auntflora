@@ -45,7 +45,8 @@ BINFILE(tiles_hd_bin);
 BINFILE(tiles_sd_bin);
 BINFILE(sprites_hd_bin);
 BINFILE(sprites_sd_bin);
-BINFILE(worldbg_bin);
+BINFILE(worldbg_sd_bin);
+BINFILE(worldbg_hd_bin);
 BINFILE(worldlogic_bin);
 BINFILE(markers_bin);
 BINFILE(song1_gvsong);
@@ -61,7 +62,7 @@ static inline u16 world_at(int x, int y) {
 }
 
 static inline u8 worldbg_at(int x, int y) {
-  const u8 *bg = BINADDR(worldbg_bin);
+  const u8 *bg = BINADDR(worldbg_sd_bin);
   return bg[x * 2 + (y * 2) * g_world.width * 2];
 }
 

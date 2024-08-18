@@ -74,7 +74,8 @@ OBJS := \
 	$(TGT_DATA)/tiles_sd.o \
 	$(TGT_DATA)/sprites_hd.o \
 	$(TGT_DATA)/sprites_sd.o \
-	$(TGT_DATA)/worldbg.o \
+	$(TGT_DATA)/worldbg_sd.o \
+	$(TGT_DATA)/worldbg_hd.o \
 	$(TGT_DATA)/worldlogic.o \
 	$(TGT_DATA)/markers.o \
 	$(TGT_DATA)/song1.o \
@@ -179,13 +180,16 @@ $(TGT_DATA)/sprites_sd.o: $(DATA)/sprites_sd.png $(TGT_DATA)/palette.bin $(XFORM
 	$(XFORM) copy8x8 $(DATA)/sprites_sd.png $(TGT_DATA)/palette.bin $(TGT_DATA)/sprites_sd.bin
 	cd $(TGT_DATA) && $(call objbinary,sprites_sd.bin,sprites_sd.o)
 
-$(TGT_DATA)/worldbg.o \
+$(TGT_DATA)/worldbg_sd.o \
+$(TGT_DATA)/worldbg_hd.o \
 $(TGT_DATA)/worldlogic.o \
-$(TGT_DATA)/markers.o: $(DATA)/world.json $(XFORM)
+$(TGT_DATA)/markers.o: $(DATA)/world_sd.json $(DATA)/world_hd.json $(XFORM)
 	$(MKDIR) -p $(@D)
-	$(XFORM) world $(DATA)/world.json \
-		$(TGT_DATA)/worldbg.bin $(TGT_DATA)/worldlogic.bin $(TGT_DATA)/markers.bin
-	cd $(TGT_DATA) && $(call objbinary,worldbg.bin,worldbg.o)
+	$(XFORM) world $(DATA)/world_sd.json $(DATA)/world_hd.json \
+		$(TGT_DATA)/worldbg_sd.bin $(TGT_DATA)/worldbg_hd.bin \
+		$(TGT_DATA)/worldlogic.bin $(TGT_DATA)/markers.bin
+	cd $(TGT_DATA) && $(call objbinary,worldbg_sd.bin,worldbg_sd.o)
+	cd $(TGT_DATA) && $(call objbinary,worldbg_hd.bin,worldbg_hd.o)
 	cd $(TGT_DATA) && $(call objbinary,worldlogic.bin,worldlogic.o)
 	cd $(TGT_DATA) && $(call objbinary,markers.bin,markers.o)
 

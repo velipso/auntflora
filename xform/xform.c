@@ -52,7 +52,8 @@ static void print_usage() {
     "  copy8x8 <input.png> <palette.bin> <output.bin>\n"
     "    Outputs 8x8 tiles from 8x8 source image\n"
     "\n"
-    "  world <input.json> <bg.bin> <logic.bin> <sprite.bin>\n"
+    "  world <input_sd.json> <input_hd.json> <bg_sd.bin> <bg_hd.bin> \\\n"
+    "    <logic.bin> <sprite.bin>\n"
     "    Process Tiled world data\n"
   );
 }
@@ -443,50 +444,91 @@ static int *json_tiled_layer(json_value *tiled, const char *layer_name, int *dat
   exit(1);
 }
 
-static int process_world(json_value *jv, FILE *fpbg, FILE *fplogic, FILE *fpsprite) {
+static int process_world(
+  json_value *jv_sd,
+  json_value *jv_hd,
+  FILE *fpbg_sd,
+  FILE *fpbg_hd,
+  FILE *fplogic,
+  FILE *fpsprite
+) {
   // marks whether a background tile is solid or not
-  const int is_solid[] = {
+  const int is_solid_sd[] = {
     // 0 = not solid
     // 1 = solid
     // 2 = shouldn't be on base layer
-    0, 1, 1, 0, 1, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1,
-    0, 1, 0, 0, 0, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1,
-    0, 1, 2, 2, 1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 1, 1,
-    0, 2, 2, 2, 1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 1, 1,
+    0,0, 1,1, 1,1, 0,0, 1,1, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2,
+    0,0, 1,1, 1,1, 0,0, 1,1, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2,
+    2,2, 2,2, 0,0, 0,0, 0,0, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2,
+    2,2, 2,2, 0,0, 0,0, 0,0, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2,
+    2,2, 1,1, 2,2, 2,2, 1,1, 1,1, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2,
+    2,2, 1,1, 2,2, 2,2, 1,1, 1,1, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2,
+    0,0, 2,2, 2,2, 2,2, 2,2, 1,1, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2,
+    0,0, 2,2, 2,2, 2,2, 2,2, 1,1, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2, 2,2,
   };
-  int width = json_number(json_objectkey(jv, "width"));
-  int height = json_number(json_objectkey(jv, "height"));
-  int *base = json_tiled_layer(jv, "base", NULL);
-  int *objs = json_tiled_layer(jv, "objs", NULL);
-  int *markers = json_tiled_layer(jv, "markers", NULL);
+  const int is_solid_hd[] = {
+    // 0 = not solid
+    // 1 = solid
+    // 2 = shouldn't be on base layer
+    0,0, 1,1, 1,1, 0,0, 1,1, 2,2, 0,0, 0,0, 1,1, 1,1, 2,2, 0,0, 2,2, 0,0, 0,0, 0,0,
+    0,0, 1,1, 1,1, 0,0, 1,1, 2,2, 0,0, 0,0, 1,1, 1,1, 2,2, 0,0, 2,2, 0,0, 0,0, 0,0,
+    0,0, 0,0, 0,0, 0,0, 0,0, 0,0, 0,0, 0,0, 1,1, 1,1, 2,2, 0,0, 2,2, 0,0, 0,0, 0,0,
+    0,0, 0,0, 0,0, 0,0, 0,0, 0,0, 0,0, 0,0, 1,1, 1,1, 2,2, 0,0, 2,2, 0,0, 0,0, 0,0,
+    0,0, 1,1, 2,2, 2,2, 1,1, 1,1, 1,1, 1,1, 1,1, 1,1, 2,2, 0,0, 2,2, 0,0, 0,0, 0,0,
+    0,0, 1,1, 2,2, 2,2, 1,1, 1,1, 1,1, 1,1, 1,1, 1,1, 2,2, 0,0, 2,2, 0,0, 0,0, 0,0,
+    0,0, 2,2, 2,2, 2,2, 1,1, 1,1, 1,1, 1,1, 1,1, 1,1, 2,2, 0,0, 2,2, 0,0, 0,0, 0,0,
+    0,0, 2,2, 2,2, 2,2, 1,1, 1,1, 1,1, 1,1, 1,1, 1,1, 2,2, 0,0, 2,2, 0,0, 0,0, 0,0,
+  };
+  int width = json_number(json_objectkey(jv_sd, "width"));
+  int height = json_number(json_objectkey(jv_sd, "height"));
+  int *base_sd = json_tiled_layer(jv_sd, "base", NULL);
+  int *base_hd = json_tiled_layer(jv_hd, "base", NULL);
+  int *objs = json_tiled_layer(jv_sd, "objs", NULL);
+  int *markers = json_tiled_layer(jv_sd, "markers", NULL);
   int w = width / 2;
   int h = height / 2;
   int warnings = 0;
 
   int bg_size = width * height;
-  uint8_t *bg = malloc(sizeof(uint8_t) * bg_size);
+  uint8_t *bg_sd = malloc(sizeof(uint8_t) * bg_size);
+  uint8_t *bg_hd = malloc(sizeof(uint8_t) * bg_size);
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
-      int b = base[x + y * width];
-      if (b <= 0) {
+      int b_sd = base_sd[x + y * width];
+      if (b_sd <= 0) {
         warnings++;
-        fprintf(stderr, "WARNING: base tile is transparent at (%d, %d)\n", x, y);
+        fprintf(stderr, "WARNING: base SD tile is transparent at (%d, %d)\n", x, y);
       } else {
-        b--;
+        b_sd--;
       }
-      int bx = (b % 32) / 2;
-      int by = (b / 32) / 2;
-      if (is_solid[bx + by * 16] == 2) {
+      if (is_solid_sd[b_sd] == 2) {
         warnings++;
         fprintf(stderr,
-          "WARNING: base tile is using graphics reserved for objects at (%d, %d)\n",
+          "WARNING: base SD tile is using graphics reserved for objects at (%d, %d)\n",
           x, y
         );
       }
-      bg[x + y * width] = b;
+      bg_sd[x + y * width] = b_sd;
+
+      int b_hd = base_hd[x + y * width];
+      if (b_hd <= 0) {
+        warnings++;
+        fprintf(stderr, "WARNING: base HD tile is transparent at (%d, %d)\n", x, y);
+      } else {
+        b_hd--;
+      }
+      if (is_solid_hd[b_hd] == 2) {
+        warnings++;
+        fprintf(stderr,
+          "WARNING: base HD tile is using graphics reserved for objects at (%d, %d)\n",
+          x, y
+        );
+      }
+      bg_hd[x + y * width] = b_hd;
     }
   }
-  fwrite(bg, sizeof(uint8_t), bg_size, fpbg);
+  fwrite(bg_sd, sizeof(uint8_t), bg_size, fpbg_sd);
+  fwrite(bg_hd, sizeof(uint8_t), bg_size, fpbg_hd);
 
   int logic_size = w * h + 2;
   uint16_t *logic_res = malloc(sizeof(uint16_t) * logic_size);
@@ -503,15 +545,21 @@ static int process_world(json_value *jv, FILE *fpbg, FILE *fplogic, FILE *fpspri
         warnings++;
         fprintf(stderr, "WARNING: Bad objs tile data at (%d, %d)\n", x * 2, y * 2);
       }
-      int b = base[(x * 2 + 0) + (y * 2 + 0) * width];
-      int bx = ((b - 1) % 32) / 2;
-      int by = ((b - 1) / 32) / 2;
-      b = bx + by * 16;
+      int b_sd = base_sd[(x * 2 + 0) + (y * 2 + 0) * width] - 1;
+      int b_hd = base_hd[(x * 2 + 0) + (y * 2 + 0) * width] - 1;
       int ox = o1 == 0 ? 0 : ((o1 - 1) % 32) / 2;
       int oy = o1 == 0 ? 0 : ((o1 - 1) / 32) / 2;
       int o = ox + oy * 16;
-      if (is_solid[b])
+      if (is_solid_sd[b_sd]) {
+        if (!is_solid_hd[b_hd]) {
+          warnings++;
+          fprintf(stderr, "WARNING: SD is solid, but HD isn't at (%d, %d)\n", x * 2, y * 2);
+        }
         o |= 0x8000;
+      } else if (is_solid_hd[b_hd]) {
+        warnings++;
+        fprintf(stderr, "WARNING: SD is not solid, but HD is at (%d, %d)\n", x * 2, y * 2);
+      }
       logic[x + y * w] = o;
     }
   }
@@ -559,7 +607,8 @@ static int process_world(json_value *jv, FILE *fpbg, FILE *fplogic, FILE *fpspri
 
   free(markers);
   free(objs);
-  free(base);
+  free(base_sd);
+  free(base_hd);
   if (warnings > 0) {
     fprintf(stderr, "\n#\n# WARNINGS: %d\n#\n", warnings);
   }
@@ -631,20 +680,24 @@ int main(int argc, const char **argv) {
     }
     return copy8x8(argv[2], argv[3], argv[4]);
   } else if (strcmp(argv[1], "world") == 0) {
-    if (argc != 6) {
+    if (argc != 8) {
       print_usage();
-      fprintf(stderr, "\nExpecting world <input.json> <bg.bin> <logic.bin> <sprite.bin>\n");
+      fprintf(stderr, "\nExpecting world <input_sd.json> <input_hd.json> <bg_sd.bin> <bg_hd.bin> <logic.bin> <sprite.bin>\n");
       return 1;
     }
-    json_value *jv = json_parsefile(argv[2]);
-    FILE *bg = fopen(argv[3], "wb");
-    FILE *logic = fopen(argv[4], "wb");
-    FILE *sprite = fopen(argv[5], "wb");
-    int res = process_world(jv, bg, logic, sprite);
+    json_value *jv_sd = json_parsefile(argv[2]);
+    json_value *jv_hd = json_parsefile(argv[3]);
+    FILE *bg_sd = fopen(argv[4], "wb");
+    FILE *bg_hd = fopen(argv[5], "wb");
+    FILE *logic = fopen(argv[6], "wb");
+    FILE *sprite = fopen(argv[7], "wb");
+    int res = process_world(jv_sd, jv_hd, bg_sd, bg_hd, logic, sprite);
     fclose4(sprite);
     fclose4(logic);
-    fclose4(bg);
-    json_free(jv);
+    fclose4(bg_hd);
+    fclose4(bg_sd);
+    json_free(jv_hd);
+    json_free(jv_sd);
     return res;
   } else if (strcmp(argv[1], "snd") == 0) {
     return snd_main(argc - 2, &argv[2]);

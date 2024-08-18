@@ -4,7 +4,7 @@ Aunt Flora's Mansion for Game Boy Advance
 Port of [_Aunt Flora's Mansion_](https://w.itch.io/aunt-floras-mansion) to Game Boy Advance.
 
 _Aunt Flora's Mansion_ is a cute [PuzzleScript](https://www.puzzlescript.net/) game made by
-[anna anthropy](https://w.itch.io/).  I thought it would be fun to port it to the GBA (with
+[anna anthropy](https://w.itch.io/).  We thought it would be fun to port it to the GBA (with
 permission), so more people are exposed to the game, and as a hackable project for others.
 
 Enjoy!

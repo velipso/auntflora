@@ -444,6 +444,11 @@ static int *json_tiled_layer(json_value *tiled, const char *layer_name, int *dat
   exit(1);
 }
 
+static bool ignore_warnings(int x, int y) {
+  // ignore warnings on center screen, because it's not a puzzle
+  return x >= 78 && x <= 107 && y >= 29 && y <= 45;
+}
+
 static int process_world(
   json_value *jv_sd,
   json_value *jv_hd,
@@ -472,12 +477,12 @@ static int process_world(
     // 2 = shouldn't be on base layer
     0,0, 1,1, 1,1, 0,0, 1,1, 2,2, 0,0, 0,0, 1,1, 1,1, 2,2, 0,0, 2,2, 0,0, 0,0, 0,0,
     0,0, 1,1, 1,1, 0,0, 1,1, 2,2, 0,0, 0,0, 1,1, 1,1, 2,2, 0,0, 2,2, 0,0, 0,0, 0,0,
-    0,0, 0,0, 0,0, 0,0, 0,0, 0,0, 0,0, 0,0, 1,1, 1,1, 2,2, 0,0, 2,2, 0,0, 0,0, 0,0,
-    0,0, 0,0, 0,0, 0,0, 0,0, 0,0, 0,0, 0,0, 1,1, 1,1, 2,2, 0,0, 2,2, 0,0, 0,0, 0,0,
-    0,0, 1,1, 2,2, 2,2, 1,1, 1,1, 1,1, 1,1, 1,1, 1,1, 2,2, 0,0, 2,2, 0,0, 0,0, 0,0,
-    0,0, 1,1, 2,2, 2,2, 1,1, 1,1, 1,1, 1,1, 1,1, 1,1, 2,2, 0,0, 2,2, 0,0, 0,0, 0,0,
-    0,0, 2,2, 2,2, 2,2, 1,1, 1,1, 1,1, 1,1, 1,1, 1,1, 2,2, 0,0, 2,2, 0,0, 0,0, 0,0,
-    0,0, 2,2, 2,2, 2,2, 1,1, 1,1, 1,1, 1,1, 1,1, 1,1, 2,2, 0,0, 2,2, 0,0, 0,0, 0,0,
+    0,0, 0,0, 0,0, 0,0, 0,0, 0,0, 0,0, 0,0, 1,1, 0,0, 2,2, 0,0, 2,2, 0,0, 0,0, 0,0,
+    0,0, 0,0, 0,0, 0,0, 0,0, 0,0, 0,0, 0,0, 1,1, 0,0, 2,2, 0,0, 2,2, 0,0, 0,0, 0,0,
+    0,0, 1,1, 2,2, 2,2, 1,1, 1,1, 1,1, 1,1, 1,1, 0,0, 2,2, 0,0, 2,2, 0,0, 0,0, 0,0,
+    0,0, 1,1, 2,2, 2,2, 1,1, 1,1, 1,1, 1,1, 1,1, 0,0, 2,2, 0,0, 2,2, 0,0, 0,0, 0,0,
+    0,0, 2,2, 2,2, 2,2, 1,1, 1,1, 1,1, 1,1, 1,1, 0,0, 2,2, 0,0, 2,2, 0,0, 0,0, 0,0,
+    0,0, 2,2, 2,2, 2,2, 1,1, 1,1, 1,1, 1,1, 1,1, 0,0, 2,2, 0,0, 2,2, 0,0, 0,0, 0,0,
   };
   int width = json_number(json_objectkey(jv_sd, "width"));
   int height = json_number(json_objectkey(jv_sd, "height"));
@@ -498,6 +503,7 @@ static int process_world(
       if (b_sd <= 0) {
         warnings++;
         fprintf(stderr, "WARNING: base SD tile is transparent at (%d, %d)\n", x, y);
+        b_sd = 0;
       } else {
         b_sd--;
       }
@@ -514,6 +520,7 @@ static int process_world(
       if (b_hd <= 0) {
         warnings++;
         fprintf(stderr, "WARNING: base HD tile is transparent at (%d, %d)\n", x, y);
+        b_hd = 0;
       } else {
         b_hd--;
       }
@@ -552,13 +559,17 @@ static int process_world(
       int o = ox + oy * 16;
       if (is_solid_sd[b_sd]) {
         if (!is_solid_hd[b_hd]) {
-          warnings++;
-          fprintf(stderr, "WARNING: SD is solid, but HD isn't at (%d, %d)\n", x * 2, y * 2);
+          if (!ignore_warnings(x * 2, y * 2)) {
+            warnings++;
+            fprintf(stderr, "WARNING: SD is solid, but HD isn't at (%d, %d)\n", x * 2, y * 2);
+          }
         }
         o |= 0x8000;
       } else if (is_solid_hd[b_hd]) {
-        warnings++;
-        fprintf(stderr, "WARNING: SD is not solid, but HD is at (%d, %d)\n", x * 2, y * 2);
+        if (!ignore_warnings(x * 2, y * 2)) {
+          warnings++;
+          fprintf(stderr, "WARNING: SD is not solid, but HD is at (%d, %d)\n", x * 2, y * 2);
+        }
       }
       logic[x + y * w] = o;
     }

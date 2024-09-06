@@ -37,6 +37,8 @@ extern int g_options;
 #define OPT_SNAP_SCROLL   8
 
 BINFILE(palette_bin);
+BINFILE(keyboard_palette_bin);
+BINFILE(keyboard_bin);
 BINFILE(title_palette_bin);
 BINFILE(title_bin);
 BINFILE(font_hd_bin);
@@ -54,6 +56,7 @@ BINFILE(song1_gvsong);
 void move_screen_to_player();
 void copy_world_offset();
 void set_player_ani_dir(int dir);
+void move_player_ani_dir(int dir);
 void nextframe();
 void gvmain();
 

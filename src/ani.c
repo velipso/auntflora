@@ -120,6 +120,7 @@ void ani_step(u32 i) {
           case 0x1: // wait
             if (s->waitcount < param) {
               s->waitcount++;
+              ani_flushxy(i);
               return;
             }
             s->waitcount = 0;
@@ -187,42 +188,42 @@ void ani_step(u32 i) {
       case 0x5: // setOffsetX
         if (param >= 2048)
           param -= 4096;
-        s->offset.x = param;
+        s->offset.x = param << 4;
         break;
       case 0x6: // setOffsetY
         if (param >= 2048)
           param -= 4096;
-        s->offset.y = param;
+        s->offset.y = param << 4;
         break;
       case 0x7: // addOffsetX
         if (param >= 2048)
           param -= 4096;
-        s->offset.x += param;
+        s->offset.x += param << 4;
         break;
       case 0x8: // addOffsetY
         if (param >= 2048)
           param -= 4096;
-        s->offset.y += param;
+        s->offset.y += param << 4;
         break;
       case 0x9: // setOffsetDX
         if (param >= 2048)
           param -= 4096;
-        s->offset.dx = param;
+        s->offset.dx = param << 4;
         break;
       case 0xa: // setOffsetDY
         if (param >= 2048)
           param -= 4096;
-        s->offset.dy = param;
+        s->offset.dy = param << 4;
         break;
       case 0xb: // addOffsetDX
         if (param >= 2048)
           param -= 4096;
-        s->offset.dx += param;
+        s->offset.dx += param << 4;
         break;
       case 0xc: // addOffsetDY
         if (param >= 2048)
           param -= 4096;
-        s->offset.dy += param;
+        s->offset.dy += param << 4;
         break;
       case 0xd: // jumpIfRandom
         // TODO: this

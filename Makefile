@@ -66,6 +66,8 @@ OBJS := \
 	$(patsubst %.s,$(TGT)/%.s.o,$(SOURCES_S)) \
 	$(patsubst %.c,$(TGT)/%.c.o,$(SOURCES_C)) \
 	$(TGT_DATA)/palette.o \
+	$(TGT_DATA)/keyboard.o \
+	$(TGT_DATA)/keyboard_palette.o \
 	$(TGT_DATA)/title.o \
 	$(TGT_DATA)/title_palette.o \
 	$(TGT_DATA)/font_hd.o \
@@ -137,6 +139,18 @@ $(TGT_DATA)/palette.bin: \
 
 $(TGT_DATA)/palette.o: $(TGT_DATA)/palette.bin
 	cd $(TGT_DATA) && $(call objbinary,palette.bin,palette.o)
+
+$(TGT_DATA)/keyboard_palette.bin: $(DATA)/keyboard.png $(XFORM)
+	$(MKDIR) -p $(@D)
+	$(XFORM) palette256 $(TGT_DATA)/keyboard_palette.bin $(DATA)/keyboard.png
+
+$(TGT_DATA)/keyboard_palette.o: $(TGT_DATA)/keyboard_palette.bin
+	cd $(TGT_DATA) && $(call objbinary,keyboard_palette.bin,keyboard_palette.o)
+
+$(TGT_DATA)/keyboard.o: $(DATA)/keyboard.png $(TGT_DATA)/keyboard_palette.bin $(XFORM)
+	$(MKDIR) -p $(@D)
+	$(XFORM) copy256 $(DATA)/keyboard.png $(TGT_DATA)/keyboard_palette.bin $(TGT_DATA)/keyboard.bin
+	cd $(TGT_DATA) && $(call objbinary,keyboard.bin,keyboard.o)
 
 $(TGT_DATA)/title_palette.bin: $(DATA)/title.png $(XFORM)
 	$(MKDIR) -p $(@D)

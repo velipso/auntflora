@@ -165,6 +165,6 @@ void write_player(int x, int y, int dir, int message) {
     else
       g_seen_marker[message] = 1;
   }
-  set_player_ani_dir(dir);
+  move_player_ani_dir(dir);
   undo_push(0x40000000 | (y << 21) | (x << 12) | (dir << 10) | (old << 8) | (message & 0xff));
 }

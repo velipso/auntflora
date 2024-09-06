@@ -23,7 +23,7 @@ struct viewport_st g_viewport = {0};
 struct world_st g_world = {0};
 struct markers_st g_markers[MAX_MARKERS] = {0};
 int g_seen_marker[MAX_MARKERS] = {0};
-int g_playerdir = 3;
+int g_playerdir = 0;
 int g_options = 0;
 int g_total_steps = 0;
 static int g_load_palette = 0;
@@ -159,6 +159,33 @@ void set_player_ani_dir(int dir) {
     case 1: g_sprites[1].pc = ani_player_r; break;
     case 2: g_sprites[1].pc = ani_player_d; break;
     case 3: g_sprites[1].pc = ani_player_l; break;
+  }
+}
+
+void move_player_ani_dir(int dir) {
+  if (opt_standard_def()) {
+    set_player_ani_dir(dir);
+    return;
+  }
+  static int which = 0;
+  g_playerdir = dir;
+  switch (dir) {
+    case 0:
+      g_sprites[1].pc = (which & 1) ? ani_player_move_u1 : ani_player_move_u2;
+      which ^= 1;
+      break;
+    case 1:
+      g_sprites[1].pc = (which & 2) ? ani_player_move_r1 : ani_player_move_r2;
+      which ^= 2;
+      break;
+    case 2:
+      g_sprites[1].pc = (which & 4) ? ani_player_move_d1 : ani_player_move_d2;
+      which ^= 4;
+      break;
+    case 3:
+      g_sprites[1].pc = (which & 8) ? ani_player_move_l1 : ani_player_move_l2;
+      which ^= 8;
+      break;
   }
 }
 
@@ -303,6 +330,19 @@ void move_screen_to_player() {
 
 static void roll_credits();
 static void title_screen() {
+  if (sys_mGBA()) {
+    sys_set_vblank(irq_vblank_title);
+    nextframe();
+    gfx_setmode(GFX_MODE_2I);
+    gfx_showbg2(true);
+    gfx_showobj(true);
+    sys_copy_tiles(0, 0, BINADDR(keyboard_bin), BINSIZE(keyboard_bin));
+    sys_copy_bgpal(0, BINADDR(keyboard_palette_bin), BINSIZE(keyboard_palette_bin));
+    gfx_showscreen(true);
+    while (g_inputdown) nextframe();
+    while (!g_inputdown) nextframe();
+  }
+
   snd_set_master_volume(16);
   snd_set_song_volume(g_song_volume);
   snd_set_sfx_volume(g_sfx_volume);
@@ -452,7 +492,7 @@ static void card_screen(const char *message) {
   // wait for keypress
   while (g_inputdown) nextframe();
   // prevent spamming
-  for (int i = 0; i < 20; i++) nextframe();
+  for (int i = 0; i < 20 && !g_noclip; i++) nextframe();
   while (!(
     (g_inputdown & SYS_INPUT_A) ||
     (g_inputdown & SYS_INPUT_ST)
@@ -649,7 +689,7 @@ static void play_game() {
   load_world();
 
   g_sprites[0].pc = ani_counter;
-  g_sprites[1].pc = ani_player_l;
+  g_sprites[1].pc = ani_player_u;
   g_sprites[2].pc = ani_aunt;
   g_sprites[3].pc = ani_cat;
 
@@ -869,9 +909,9 @@ static void roll_credits() {
     "                    \n"
     "  Game Boy Advance  \n"
     "  port by           \n"
-    "     Sean Connelly  \n"
-    "       and          \n"
     "     Casey Dean     \n"
+    "       and          \n"
+    "     Sean Connelly  \n"
     "       from         \n"
     "     Pocket Pulp    \n"
     "     www.pulp.biz   \n"

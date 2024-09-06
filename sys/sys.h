@@ -40,6 +40,7 @@ void snd_set_song_volume(int v); // 0-16
 void snd_set_sfx_volume(int v); // 0-16
 int snd_find_wav(const char *name);
 bool snd_play_wav(int wav_index, int volume /* 0-16 */, int priority);
+bool sys_mGBA();
 
 #define RGB15(r, g, b)  (((r) & 0x1f) | (((g) & 0x1f) << 5) | (((b) & 0x1f) << 10))
 

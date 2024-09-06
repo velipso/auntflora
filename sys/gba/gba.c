@@ -31,6 +31,12 @@ void sys_init() {
   _sys_snd_init();
 }
 
+bool sys_mGBA() {
+  volatile u16 *reg = (u16 *)0x4fff780;
+  *reg = 0xc0de;
+  return *reg == 0x1dea;
+}
+
 static void _sys_wrap_vblank() {
   // allow re-entrant IRQs so timer1 for snd is handled
   REG_IME = 1;

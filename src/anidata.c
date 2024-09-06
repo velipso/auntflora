@@ -72,14 +72,14 @@
 #define TILE(v)        (0x1000 | U10(v))
 #define TILEXY(x, y)   TILE((((x) >> 3) + (((y) >> 3) << 4)) << 1)
 #define GRAVITY(v)     (0x4000 | F48(v))
-#define X(v)           (0x5000 | F4(v))
-#define Y(v)           (0x6000 | F4(v))
-#define ADDX(v)        (0x7000 | F4(v))
-#define ADDY(v)        (0x8000 | F4(v))
-#define DX(v)          (0x9000 | F4(v))
-#define DY(v)          (0xa000 | F4(v))
-#define ADDDX(v)       (0xb000 | F4(v))
-#define ADDDY(v)       (0xc000 | F4(v))
+#define X(v)           (0x5000 | F84(v))
+#define Y(v)           (0x6000 | F84(v))
+#define ADDX(v)        (0x7000 | F84(v))
+#define ADDY(v)        (0x8000 | F84(v))
+#define DX(v)          (0x9000 | F84(v))
+#define DY(v)          (0xa000 | F84(v))
+#define ADDDX(v)       (0xb000 | F84(v))
+#define ADDDY(v)       (0xc000 | F84(v))
 
 const u16 ani_player_u[] = {
   RESET(),
@@ -109,10 +109,126 @@ const u16 ani_player_l[] = {
   STOP()
 };
 
+const u16 ani_player_move_u1[] = {
+  RESET(),
+  SIZE_16x16(),
+  TILEXY(0, 16),
+  Y(9),
+  WAIT(1),
+  Y(6),
+  WAIT(1),
+  Y(3),
+  WAIT(1),
+  Y(0),
+  STOP()
+};
+
+const u16 ani_player_move_u2[] = {
+  RESET(),
+  SIZE_16x16(),
+  TILEXY(16, 16),
+  Y(9),
+  WAIT(1),
+  Y(6),
+  WAIT(1),
+  Y(3),
+  WAIT(1),
+  Y(0),
+  STOP()
+};
+
+const u16 ani_player_move_r1[] = {
+  RESET(),
+  SIZE_16x16(),
+  TILEXY(0, 32),
+  X(-9),
+  WAIT(1),
+  X(-6),
+  WAIT(1),
+  X(-3),
+  WAIT(1),
+  X(0),
+  STOP()
+};
+
+const u16 ani_player_move_r2[] = {
+  RESET(),
+  SIZE_16x16(),
+  TILEXY(16, 32),
+  X(-9),
+  WAIT(1),
+  X(-6),
+  WAIT(1),
+  X(-3),
+  WAIT(1),
+  X(0),
+  STOP()
+};
+
+const u16 ani_player_move_d1[] = {
+  RESET(),
+  SIZE_16x16(),
+  TILEXY(0, 48),
+  Y(-9),
+  WAIT(1),
+  Y(-6),
+  WAIT(1),
+  Y(-3),
+  WAIT(1),
+  Y(0),
+  STOP()
+};
+
+const u16 ani_player_move_d2[] = {
+  RESET(),
+  SIZE_16x16(),
+  TILEXY(16, 48),
+  Y(-9),
+  WAIT(1),
+  Y(-6),
+  WAIT(1),
+  Y(-3),
+  WAIT(1),
+  Y(0),
+  STOP()
+};
+
+const u16 ani_player_move_l1[] = {
+  RESET(),
+  SIZE_16x16(),
+  TILEXY(0, 64),
+  X(9),
+  WAIT(1),
+  X(6),
+  WAIT(1),
+  X(3),
+  WAIT(1),
+  X(0),
+  STOP()
+};
+
+const u16 ani_player_move_l2[] = {
+  RESET(),
+  SIZE_16x16(),
+  TILEXY(16, 64),
+  X(9),
+  WAIT(1),
+  X(6),
+  WAIT(1),
+  X(3),
+  WAIT(1),
+  X(0),
+  STOP()
+};
+
 const u16 ani_aunt[] = {
   RESET(),
   SIZE_16x16(),
   TILEXY(0, 80),
+  WAIT(17),
+  TILEXY(16, 80),
+  WAIT(17),
+  JUMP(-4),
   STOP()
 };
 
@@ -120,6 +236,10 @@ const u16 ani_cat[] = {
   RESET(),
   SIZE_16x16(),
   TILEXY(0, 96),
+  WAIT(17),
+  TILEXY(16, 96),
+  WAIT(17),
+  JUMP(-4),
   STOP()
 };
 

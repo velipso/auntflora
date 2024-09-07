@@ -104,3 +104,12 @@ Lastly, if you're making a new game, you probably want to change the metadata of
 
 See [GBATEK](https://problemkaputt.de/gbatek.htm#gbacartridgeheader) for more information on these
 values.
+
+Live Streams
+------------
+
+Casey live streamed a lot of her work on creating the HD graphics.
+
+Check them out here if you're interested!
+
+[Pocket Pulp Live Streams](https://www.youtube.com/@pocketpulp/streams)

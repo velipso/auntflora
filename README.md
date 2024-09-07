@@ -49,3 +49,58 @@ make
 ```
 
 And the ROM will be output to `tgt/auntflora.gba`.
+
+Hacking Instructions
+--------------------
+
+The map is edited with [Tiled](https://www.mapeditor.org/).
+
+There are two maps:
+
+1. `data/world_sd.json` - standard definition (SD)
+2. `data/world_hd.json` - high definition (HD)
+
+In order to edit the logic, you must edit both maps, so they are in sync with each other.
+
+The tilemaps have layers:
+
+1. `screens` - ignored; marks the screen boundaries for convenience
+2. `markers` - special positions on the map that trigger actions (text popups, end of game, etc)
+3. `objs` - objects that are layered above the base layer; these can potentially move
+4. `base` - base layer, this is static and never changes
+
+During the build process, the SD map is considered authoritative, and the HD map will be compared
+against it to try and detect mistakes.
+
+If you are changing the tilemap completely, then you should know there is some hardcoded behavior,
+based on the original map:
+
+1. `xform/xform.c`, function `ignore_warnings`, which ignores warnings on the HD end screen, which
+   was changed a lot from the SD end screen
+2. `src/main.c`, function `move_player`, has hardcoded logic to expand the size of the Parlor and
+   Kitchen markers
+
+The tilesets are:
+
+1. `data/tiles_sd.png` - standard definition (SD)
+2. `data/tiles_hd.png` - high definition (HD)
+
+Notice that the SD tiles are 10x10, but with pixels doubled to match the original game's resolution
+of 5x5.  The HD tiles are 12x12.
+
+If you are changing the meaning of a tile, then you need to update a few locations:
+
+1. `xform/xform.c`, constants `is_solid_sd` and `is_solid_hd`, which are used to flag solid tiles,
+   and show warnings
+2. `src/cellinfo.c`, constant `g_cellinfo`, which contains flags of how to interpret each tile
+
+Note that if a tile is solid (via `is_solid_hd`), then it should have the high bit set in
+`g_cellinfo` (`0x8000`).
+
+Lastly, if you're making a new game, you probably want to change the metadata of the GBA ROM file:
+
+1. `sys/gba/crt0.s`, game title, currently set to `AUNTFLORA\0\0\0`
+2. `sys/gba/crt0.s`, game code, currently set to `CAFE77`
+
+See [GBATEK](https://problemkaputt.de/gbatek.htm#gbacartridgeheader) for more information on these
+values.

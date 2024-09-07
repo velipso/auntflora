@@ -17,6 +17,8 @@ Features:
 
 My best score for total steps is 1213.
 
+[Download the GBA ROM here](https://github.com/velipso/auntflora/releases/download/v0.8/auntflora.gba).
+
 ![Screenshot](screenshot.png)
 
 Build Instructions

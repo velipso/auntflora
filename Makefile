@@ -139,7 +139,7 @@ $(TGT_DATA)/palette.bin: \
 
 $(TGT_DATA)/palette_brightness.o: $(TGT_DATA)/palette.bin
 	$(XFORM) brightness $(TGT_DATA)/palette_brightness.bin \
-		$(TGT_DATA)/palette.bin 10 2 2.2 2.3 12 15
+		$(TGT_DATA)/palette.bin 10 2 2.2 2.3 12 23
 	cd $(TGT_DATA) && $(call objbinary,palette_brightness.bin,palette_brightness.o)
 
 $(TGT_DATA)/keyboard_palette.bin: $(DATA)/keyboard.png $(XFORM)

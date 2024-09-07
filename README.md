@@ -11,7 +11,7 @@ Features:
 
 1. Puzzle, graphics, and sound effects from original game
 2. Undo and checkpoint saving
-3. New HD graphics and expanded viewport
+3. New HD graphics and expanded viewport ([live streams](#live-streams))
 4. Music track (Hungarian Dance no. 5)
 5. Permissible license to encourage hacking
 
@@ -112,4 +112,17 @@ Casey live streamed a lot of her work on creating the HD graphics.
 
 Check them out here if you're interested!
 
-[Pocket Pulp Live Streams](https://www.youtube.com/@pocketpulp/streams)
+1. [July 17th, part 1](https://www.youtube.com/watch?v=YMduDJUNBhI)
+2. [July 17th, part 2](https://www.youtube.com/watch?v=qXaF5CrgByA)
+3. [July 23rd](https://www.youtube.com/watch?v=wpXrMJAXAyM)
+4. [August 3rd](https://www.youtube.com/watch?v=1A8RpR8TZfU)
+5. [August 8th](https://www.youtube.com/watch?v=fO7ELxsozJc)
+6. [August 13th](https://www.youtube.com/watch?v=k1MrsxKpDMg)
+7. [August 14th](https://www.youtube.com/watch?v=L8-2Kixe1IY)
+8. [August 15th](https://www.youtube.com/watch?v=apSsQVW3GpM)
+9. [August 16th](https://www.youtube.com/watch?v=DjD4yjVYO1o)
+10. [August 17th](https://www.youtube.com/watch?v=slslhKXCb1M)
+11. [August 21st](https://www.youtube.com/watch?v=4qEIh4_bAYQ)
+12. [August 26th](https://www.youtube.com/watch?v=A5e8Qrx_RWo)
+13. [August 27th](https://www.youtube.com/watch?v=Ra9rOuirM-8)
+14. [September 5th (Playtesting)](https://www.youtube.com/watch?v=qFzp9FdjR8U)

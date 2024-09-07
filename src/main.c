@@ -29,6 +29,7 @@ int g_total_steps = 0;
 static int g_load_palette = 0;
 static int g_song_volume = 6;
 static int g_sfx_volume = 16;
+static int g_brightness = 2;
 static int g_show_counter = 0;
 static const u8 zero[64] = {0};
 static bool g_noclip = false;
@@ -48,8 +49,8 @@ static void SECTION_IWRAM_ARM irq_vblank_game() {
     }
     g_load_palette = 0;
   } else if (g_load_palette == 2) { // load colors
-    sys_copy_bgpal(0, BINADDR(palette_bin), BINSIZE(palette_bin));
-    sys_copy_spritepal(0, BINADDR(palette_bin), BINSIZE(palette_bin));
+    sys_copy_bgpal(0, BINADDR(palette_brightness_bin) + g_brightness * 512, 512);
+    sys_copy_spritepal(0, BINADDR(palette_brightness_bin) + g_brightness * 512, 512);
     g_load_palette = 0;
   }
   sys_copy_map(28, 0, g_map0, 64 * 64);
@@ -58,6 +59,11 @@ static void SECTION_IWRAM_ARM irq_vblank_game() {
   int inp = sys_input() ^ 0x3ff;
   g_inputhit = ~g_inputdown & inp;
   g_inputdown = inp;
+}
+
+static void set_brightness(int db) {
+  g_brightness += db;
+  g_load_palette = 2;
 }
 
 static void settile0(u32 x, u32 y, u32 t) {
@@ -357,7 +363,7 @@ restart_title_screen:
   sys_copy_tiles(0, 0, BINADDR(title_bin), BINSIZE(title_bin));
   sys_copy_tiles(4, 0, BINADDR(sprites_hd_bin), BINSIZE(sprites_hd_bin));
   sys_copy_bgpal(0, BINADDR(title_palette_bin), BINSIZE(title_palette_bin));
-  sys_copy_spritepal(0, BINADDR(palette_bin), BINSIZE(palette_bin));
+  sys_copy_spritepal(0, BINADDR(palette_brightness_bin) + g_brightness * 512, 512);
   gfx_showscreen(true);
 
   // wait for no keys
@@ -429,6 +435,7 @@ restart_title_screen:
   }
 }
 
+static int card_screen_y = 4;
 static void card_screen_setup() {
   sys_set_vblank(irq_vblank_game);
   g_load_palette = 1; // load black
@@ -447,7 +454,7 @@ static void card_screen_setup() {
   gfx_showbg2(true);
   gfx_showbg3(false);
   gfx_showobj(true);
-  sys_set_bgs2_scroll(0x0156 * -6, 0x0156 * 4);
+  sys_set_bgs2_scroll(0x0156 * -6, 0x0156 * card_screen_y);
 }
 
 static void card_screen_print(const char *text) {
@@ -546,8 +553,8 @@ static void render_total_steps() {
   static int black_pix = -1;
 
   if (white_pix < 0) {
-    const u16 *pal = BINADDR(palette_bin);
-    int size = BINSIZE(palette_bin) / 2;
+    const u16 *pal = BINADDR(palette_brightness_bin) + 2 * 512;
+    int size = 256;
     for (int i = 1; i < size; i++) {
       if (pal[i] == 0)
         black_pix = i;
@@ -1101,6 +1108,7 @@ static void card_options_volume(char *msg, int volume) {
 }
 
 static void card_options() {
+  card_screen_y = -2;
   card_screen_setup();
 
   char message[300];
@@ -1116,11 +1124,11 @@ static void card_options() {
     "                    \n"
     " Sound Fx           \n"
     "                    \n"
+    " Brightness         \n"
     "                    \n"
-    "  Start to return   \n"
     "                    \n";
 
-  int menu = 0;
+  static int menu = 0;
   int refresh = 1;
   while (1) {
     if (refresh) {
@@ -1173,6 +1181,15 @@ static void card_options() {
       }
       card_options_volume(&message[161], g_song_volume);
       card_options_volume(&message[203], g_sfx_volume);
+      if (g_brightness >= 9) {
+        message[245] = 'M';
+        message[246] = 'a';
+        message[247] = 'x';
+      } else {
+        message[245] = ' ';
+        message[246] = '1' + g_brightness;
+        message[247] = ' ';
+      }
       card_screen_print(message);
     }
     nextframe();
@@ -1182,12 +1199,13 @@ static void card_options() {
         refresh = 1;
       }
     } else if (g_inputhit & SYS_INPUT_D) {
-      if (menu < 4) {
+      if (menu < 5) {
         menu++;
         refresh = 1;
       }
     } else if (g_inputhit & SYS_INPUT_ST) {
       sfx_click();
+      card_screen_y = 4;
       return;
     } else if (menu == 0) { // Graphics
       int d = 0;
@@ -1256,6 +1274,21 @@ static void card_options() {
           snd_set_sfx_volume(g_sfx_volume);
           sfx_push();
           refresh = 2; // don't play sfx_click
+        } else
+          sfx_bump();
+      }
+    } else if (menu == 5) { // Brightness
+      if (g_inputhit & SYS_INPUT_L) {
+        if (g_brightness > 0) {
+          set_brightness(-1);
+          refresh = 1;
+        } else
+          sfx_bump();
+      }
+      if (g_inputhit & SYS_INPUT_R) {
+        if (g_brightness < 9) {
+          set_brightness(1);
+          refresh = 1;
         } else
           sfx_bump();
       }

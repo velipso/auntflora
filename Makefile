@@ -65,7 +65,7 @@ LDFLAGS := \
 OBJS := \
 	$(patsubst %.s,$(TGT)/%.s.o,$(SOURCES_S)) \
 	$(patsubst %.c,$(TGT)/%.c.o,$(SOURCES_C)) \
-	$(TGT_DATA)/palette.o \
+	$(TGT_DATA)/palette_brightness.o \
 	$(TGT_DATA)/keyboard.o \
 	$(TGT_DATA)/keyboard_palette.o \
 	$(TGT_DATA)/title.o \
@@ -137,8 +137,10 @@ $(TGT_DATA)/palette.bin: \
 		$(DATA)/font_hd.png $(DATA)/font_sd.png $(DATA)/tiles_hd.png $(DATA)/tiles_sd.png \
 		$(DATA)/sprites_hd.png $(DATA)/sprites_sd.png
 
-$(TGT_DATA)/palette.o: $(TGT_DATA)/palette.bin
-	cd $(TGT_DATA) && $(call objbinary,palette.bin,palette.o)
+$(TGT_DATA)/palette_brightness.o: $(TGT_DATA)/palette.bin
+	$(XFORM) brightness $(TGT_DATA)/palette_brightness.bin \
+		$(TGT_DATA)/palette.bin 10 2 2.2 2.3 12 15
+	cd $(TGT_DATA) && $(call objbinary,palette_brightness.bin,palette_brightness.o)
 
 $(TGT_DATA)/keyboard_palette.bin: $(DATA)/keyboard.png $(XFORM)
 	$(MKDIR) -p $(@D)

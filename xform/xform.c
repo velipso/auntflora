@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <math.h>
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #define STB_DS_IMPLEMENTATION
@@ -39,6 +40,10 @@ static void print_usage() {
     "\n"
     "  palette256 <output.bin> [input1.png input2.png ...]\n"
     "    Create a 256 color palette from the input files\n"
+    "\n"
+    "  brightness <output.bin> <palette.bin> <count> <baseline> <gamma> <ex> \\\n"
+    "    <skipdark> <skiplight>\n"
+    "    Create <count> palettes on a brightness curve\n"
     "\n"
     "  expand6x6to8x8 <input.png> <palette.bin> <output.bin>\n"
     "    Outputs 8x8 tiles from 6x6 source image\n"
@@ -185,6 +190,71 @@ static int findpal(u32 color, const u16 *palette, int maxpal) {
     }
   }
   return -1;
+}
+
+static int brightness_scale(
+  double c,
+  int i,
+  int count,
+  int baseline,
+  double gamma,
+  double ex
+) {
+  double b;
+  if (i < baseline) {
+    b = ((double)i) / baseline;
+  } else if (i == baseline) {
+    b = 1.0;
+  } else {
+    b = 1.0 + ((double)(i - baseline)) / (count - baseline - 1);
+    c += (b - 1.0) / pow(2, ex);
+  }
+  c = pow(pow(c, 1.0 / gamma) * pow(b, ex), gamma);
+  if (c < 0) {
+    c = 0;
+  } else if (c > 1) {
+    c = 1;
+  }
+  return ((int)(c * 0x1f)) & 0x1f;
+}
+
+static int brightness(
+  const char *output,
+  const char *palette,
+  int count,
+  int baseline,
+  double gamma,
+  double ex,
+  int sd,
+  int sl
+) {
+  int maxpal;
+  u16 *pal = readpal(palette, &maxpal);
+  FILE *fp = fopen(output, "wb");
+  if (!fp) {
+    fprintf(stderr, "\nFailed to write: %s\n", output);
+    free(pal);
+    return 1;
+  }
+
+  for (int i = 0; i < count; i++) {
+    for (int p = 0; p < maxpal; p++) {
+      double r = (pal[p] & 0x1f) / 31.0;
+      double g = ((pal[p] >> 5) & 0x1f) / 31.0;
+      double b = ((pal[p] >> 10) & 0x1f) / 31.0;
+
+      int ri = brightness_scale(r, i + sd, count + sd + sl, baseline + sd, gamma, ex);
+      int gi = brightness_scale(g, i + sd, count + sd + sl, baseline + sd, gamma, ex);
+      int bi = brightness_scale(b, i + sd, count + sd + sl, baseline + sd, gamma, ex);
+
+      u16 rgb = ri | (gi << 5) | (bi << 10);
+      fwrite(&rgb, 2, 1, fp);
+    }
+  }
+
+  fclose4(fp);
+  free(pal);
+  return 0;
 }
 
 static int expand6x6to8x8(const char *input, const char *palette, const char *output) {
@@ -662,6 +732,26 @@ int main(int argc, const char **argv) {
     fwrite(palette, sizeof(palette), 1, fp);
     fclose4(fp);
     return 0;
+  } else if (strcmp(argv[1], "brightness") == 0) {
+    if (argc != 10) {
+      print_usage();
+      fprintf(
+        stderr,
+        "\nExpecting brightness <output.bin> <palette.bin> <count> <baseline> <gamma> <ex> "
+        "<skipdark> <skiplight>\n"
+      );
+      return 1;
+    }
+    return brightness(
+      argv[2],
+      argv[3],
+      atoi(argv[4]),
+      atoi(argv[5]),
+      strtod(argv[6], NULL),
+      strtod(argv[7], NULL),
+      atoi(argv[8]),
+      atoi(argv[9])
+    );
   } else if (strcmp(argv[1], "expand6x6to8x8") == 0) {
     if (argc != 5) {
       print_usage();

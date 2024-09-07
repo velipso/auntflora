@@ -36,7 +36,7 @@ extern int g_options;
 #define OPT_HIDE_BORDERS  4
 #define OPT_SNAP_SCROLL   8
 
-BINFILE(palette_bin);
+BINFILE(palette_brightness_bin);
 BINFILE(keyboard_palette_bin);
 BINFILE(keyboard_bin);
 BINFILE(title_palette_bin);

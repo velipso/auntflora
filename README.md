@@ -7,9 +7,17 @@ _Aunt Flora's Mansion_ is a cute [PuzzleScript](https://www.puzzlescript.net/) g
 [anna anthropy](https://w.itch.io/).  We thought it would be fun to port it to the GBA (with
 permission), so more people are exposed to the game, and as a hackable project for others.
 
-Enjoy!
+Features:
+
+1. Puzzle, graphics, and sound effects from original game
+2. Undo and checkpoint saving
+3. New HD graphics and expanded viewport
+4. Music track (Hungarian Dance no. 5)
+5. Permissible license to encourage hacking
 
 My best score for total steps is 1213.
+
+![Screenshot](screenshot.png)
 
 Build Instructions
 ------------------

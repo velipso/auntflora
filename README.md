@@ -17,7 +17,7 @@ Features:
 
 My best score for total steps is 1213.
 
-[Download the GBA ROM here](https://github.com/velipso/auntflora/releases/download/v1.0/AuntFlorasMansion.gba).
+[Download the GBA ROM here](https://github.com/velipso/auntflora/releases/download/v1.1/AuntFlorasMansion.gba).
 
 You will need an emulator to play the game, we suggest [mGBA](https://mgba.io).
 
